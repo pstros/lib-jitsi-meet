@@ -20,6 +20,7 @@ modules/statistics/RTPStatsCollector.js
 modules/statistics/LocalStatsCollector.js
 modules/connectionquality/connectionquality.js
 modules/RTC/adapter.js
+modules/RTC/adapter.screenshare.js
 modules/statistics/statistics.js
 modules/RTC/RTC.js
 modules/RTC/RTCUtils.js
