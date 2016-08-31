@@ -2,7 +2,7 @@ var JitsiTrack = require("./JitsiTrack");
 var JitsiTrackEvents = require("../../JitsiTrackEvents");
 var RTCBrowserType = require("./RTCBrowserType");
 var Statistics = require("../statistics/statistics");
-var AdapterJS = require("./adapter.screenshare");
+var AdapterJS = require("./adapter");
 
 var ttfmTrackerAudioAttached = false;
 var ttfmTrackerVideoAttached = false;
