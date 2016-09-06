@@ -1447,22 +1447,24 @@ JingleSessionPC.prototype.fixSourceAddJingle = function (jingle) {
     this.modifiedSSRCs["unmute"] = [];
     if(ssrcs && ssrcs.length) {
         ssrcs.forEach(function (ssrcObj) {
-            var desc = $(jingle.tree()).find(">jingle>content[name=\"" +
-                ssrcObj.mtype + "\"]>description");
-            if(!desc || !desc.length)
-                return;
-            ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
-                var sourceNode = desc.find(">source[ssrc=\"" +
-                    ssrc + "\"]");
-                sourceNode.remove();
-            });
-            ssrcObj.ssrc.groups.forEach(function (group) {
-                var groupNode = desc.find(">ssrc-group[semantics=\"" +
-                    group.group.semantics + "\"]:has(source[ssrc=\"" +
-                    group.primarySSRC +
-                     "\"])");
-                groupNode.remove();
-            });
+            if(ssrcObj.ssrc) {
+                var desc = $(jingle.tree()).find(">jingle>content[name=\"" +
+                    ssrcObj.mtype + "\"]>description");
+                if(!desc || !desc.length)
+                    return;
+                ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
+                    var sourceNode = desc.find(">source[ssrc=\"" +
+                        ssrc + "\"]");
+                    sourceNode.remove();
+                });
+                ssrcObj.ssrc.groups.forEach(function (group) {
+                    var groupNode = desc.find(">ssrc-group[semantics=\"" +
+                        group.group.semantics + "\"]:has(source[ssrc=\"" +
+                        group.primarySSRC +
+                        "\"])");
+                    groupNode.remove();
+                });
+                }
         });
     }
 
@@ -1470,31 +1472,33 @@ JingleSessionPC.prototype.fixSourceAddJingle = function (jingle) {
     this.modifiedSSRCs["addMuted"] = [];
     if(ssrcs && ssrcs.length) {
         ssrcs.forEach(function (ssrcObj) {
-            var desc = createDescriptionNode(jingle, ssrcObj.mtype);
-            var cname = Math.random().toString(36).substring(2);
-            ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
-                var sourceNode = desc.find(">source[ssrc=\"" +ssrc + "\"]");
-                sourceNode.remove();
-                var sourceXML = "<source " +
-                    "xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\" ssrc=\"" +
-                    ssrc + "\">" +
-                    "<parameter xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"" +
-                    " value=\"" + ssrcObj.msid + "\" name=\"msid\"/>" +
-                    "<parameter xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"" +
-                    " value=\"" + cname + "\" name=\"cname\" />" + "</source>";
-                desc.append(sourceXML);
-            });
-            ssrcObj.ssrc.groups.forEach(function (group) {
-                var groupNode = desc.find(">ssrc-group[semantics=\"" +
-                    group.group.semantics + "\"]:has(source[ssrc=\"" + group.primarySSRC +
-                    "\"])");
-                groupNode.remove();
-                desc.append("<ssrc-group semantics=\"" +
-                    group.group.semantics +
-                    "\" xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"><source ssrc=\"" +
-                    group.group.ssrcs.split(" ").join("\"/><source ssrc=\"") + "\"/>" +
-                    "</ssrc-group>");
-            });
+            if(ssrcObj.ssrc) {
+                var desc = createDescriptionNode(jingle, ssrcObj.mtype);
+                var cname = Math.random().toString(36).substring(2);
+                ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
+                    var sourceNode = desc.find(">source[ssrc=\"" +ssrc + "\"]");
+                    sourceNode.remove();
+                    var sourceXML = "<source " +
+                        "xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\" ssrc=\"" +
+                        ssrc + "\">" +
+                        "<parameter xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"" +
+                        " value=\"" + ssrcObj.msid + "\" name=\"msid\"/>" +
+                        "<parameter xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"" +
+                        " value=\"" + cname + "\" name=\"cname\" />" + "</source>";
+                    desc.append(sourceXML);
+                });
+                ssrcObj.ssrc.groups.forEach(function (group) {
+                    var groupNode = desc.find(">ssrc-group[semantics=\"" +
+                        group.group.semantics + "\"]:has(source[ssrc=\"" + group.primarySSRC +
+                        "\"])");
+                    groupNode.remove();
+                    desc.append("<ssrc-group semantics=\"" +
+                        group.group.semantics +
+                        "\" xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"><source ssrc=\"" +
+                        group.group.ssrcs.split(" ").join("\"/><source ssrc=\"") + "\"/>" +
+                        "</ssrc-group>");
+                });
+            }
         });
     }
 }
@@ -1510,47 +1514,51 @@ JingleSessionPC.prototype.fixSourceRemoveJingle = function(jingle) {
     this.modifiedSSRCs["mute"] = [];
     if(ssrcs && ssrcs.length)
         ssrcs.forEach(function (ssrcObj) {
-            ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
-                var sourceNode = $(jingle.tree()).find(">jingle>content[name=\"" +
-                    ssrcObj.mtype + "\"]>description>source[ssrc=\"" +
-                    ssrc + "\"]");
-                sourceNode.remove();
-            });
-            ssrcObj.ssrc.groups.forEach(function (group) {
-                var groupNode = $(jingle.tree()).find(">jingle>content[name=\"" +
-                    ssrcObj.mtype + "\"]>description>ssrc-group[semantics=\"" +
-                    group.group.semantics + "\"]:has(source[ssrc=\"" + group.primarySSRC +
-                     "\"])");
-                groupNode.remove();
-            });
+            if(ssrcObj.ssrc) {
+                ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
+                    var sourceNode = $(jingle.tree()).find(">jingle>content[name=\"" +
+                        ssrcObj.mtype + "\"]>description>source[ssrc=\"" +
+                        ssrc + "\"]");
+                    sourceNode.remove();
+                });
+                ssrcObj.ssrc.groups.forEach(function (group) {
+                    var groupNode = $(jingle.tree()).find(">jingle>content[name=\"" +
+                        ssrcObj.mtype + "\"]>description>ssrc-group[semantics=\"" +
+                        group.group.semantics + "\"]:has(source[ssrc=\"" + group.primarySSRC +
+                        "\"])");
+                    groupNode.remove();
+                });
+            }
         });
 
     ssrcs = this.modifiedSSRCs["remove"];
     this.modifiedSSRCs["remove"] = [];
     if(ssrcs && ssrcs.length)
         ssrcs.forEach(function (ssrcObj) {
-            var desc = createDescriptionNode(jingle, ssrcObj.mtype);
-            ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
-                var sourceNode = desc.find(">source[ssrc=\"" +ssrc + "\"]");
-                if(!sourceNode || !sourceNode.length) {
-                    //Maybe we have to include cname, msid, etc here?
-                    desc.append("<source " +
-                        "xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\" ssrc=\"" +
-                        ssrc + "\"></source>");
-                }
-            });
-            ssrcObj.ssrc.groups.forEach(function (group) {
-                var groupNode = desc.find(">ssrc-group[semantics=\"" +
-                    group.group.semantics + "\"]:has(source[ssrc=\"" + group.primarySSRC +
-                     "\"])");
-                if(!groupNode || !groupNode.length) {
-                    desc.append("<ssrc-group semantics=\"" +
-                        group.group.semantics +
-                        "\" xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"><source ssrc=\"" +
-                        group.group.ssrcs.split(" ").join("\"/><source ssrc=\"") + "\"/>" +
-                        "</ssrc-group>");
-                }
-            });
+            if(ssrcObj.ssrc) {
+                var desc = createDescriptionNode(jingle, ssrcObj.mtype);
+                ssrcObj.ssrc.ssrcs.forEach(function (ssrc) {
+                    var sourceNode = desc.find(">source[ssrc=\"" +ssrc + "\"]");
+                    if(!sourceNode || !sourceNode.length) {
+                        //Maybe we have to include cname, msid, etc here?
+                        desc.append("<source " +
+                            "xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\" ssrc=\"" +
+                            ssrc + "\"></source>");
+                    }
+                });
+                ssrcObj.ssrc.groups.forEach(function (group) {
+                    var groupNode = desc.find(">ssrc-group[semantics=\"" +
+                        group.group.semantics + "\"]:has(source[ssrc=\"" + group.primarySSRC +
+                        "\"])");
+                    if(!groupNode || !groupNode.length) {
+                        desc.append("<ssrc-group semantics=\"" +
+                            group.group.semantics +
+                            "\" xmlns=\"urn:xmpp:jingle:apps:rtp:ssma:0\"><source ssrc=\"" +
+                            group.group.ssrcs.split(" ").join("\"/><source ssrc=\"") + "\"/>" +
+                            "</ssrc-group>");
+                    }
+                });
+            }
         });
 }
 
