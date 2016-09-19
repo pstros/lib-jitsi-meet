@@ -84,24 +84,61 @@ RTC.obtainAudioAndVideoPermissions = function (options) {
 };
 
 RTC.prototype.onIncommingCall = function(event) {
-    if(this.options.config.openSctp)
+    if(this.options.config.openSctp) {
         this.dataChannels = new DataChannels(event.peerconnection,
             this.eventEmitter);
+        this._dataChannelOpenListener = () => {
+            // when the data channel becomes available, tell the bridge
+            // about video selections so that it can do adaptive simulcast,
+            // we want the notification to trigger even if userJid
+            // is undefined, or null.
+            // XXX why do we not do the same for pinned endpoints?
+            try {
+                this.dataChannels.sendSelectedEndpointMessage(
+                    this.selectedEndpoint);
+            } catch (error) {
+                GlobalOnErrorHandler.callErrorHandler(error);
+                logger.error("Cannot sendSelectedEndpointMessage ",
+                    this.selectedEndpoint, ". Error: ", error);
+            }
+
+            this.removeListener(RTCEvents.DATA_CHANNEL_OPEN,
+                this._dataChannelOpenListener);
+            this._dataChannelOpenListener = null;
+        };
+        this.addListener(RTCEvents.DATA_CHANNEL_OPEN,
+            this._dataChannelOpenListener);
+    }
 };
 
 /**
- * Elects the participant with the given id to be the pinned participant in
+ * Should be called when current media session ends and after the PeerConnection
+ * has been closed using PeerConnection.close() method.
+ */
+RTC.prototype.onCallEnded = function() {
+    if (this.dataChannels) {
+        // DataChannels are not explicitly closed as the PeerConnection
+        // is closed on call ended which triggers data channel onclose events.
+        // The reference is cleared to disable any logic related to the data
+        // channels.
+        this.dataChannels = null;
+    }
+};
+
+/**
+ * Elects the participant with the given id to be the selected participant in
  * order to always receive video for this participant (even when last n is
  * enabled).
+ * If there is no data channel we store it and send it through the channel once
+ * it is created.
  * @param id {string} the user id.
  * @throws NetworkError or InvalidStateError or Error if the operation fails.
 */
 RTC.prototype.selectEndpoint = function (id) {
-    if(this.dataChannels) {
+    // cache the value if channel is missing, till we open it
+    this.selectedEndpoint = id;
+    if(this.dataChannels)
         this.dataChannels.sendSelectedEndpointMessage(id);
-    } else {
-        throw new Error("Data channels support is disabled!");
-    }
 };
 
 /**
@@ -115,6 +152,8 @@ RTC.prototype.pinEndpoint = function (id) {
     if(this.dataChannels) {
         this.dataChannels.sendPinnedEndpointMessage(id);
     } else {
+        // FIXME: cache value while there is no data channel created
+        // and send the cached state once channel is created
         throw new Error("Data channels support is disabled!");
     }
 };
@@ -513,7 +552,8 @@ RTC.prototype.handleRemoteTrackVideoTypeChanged = function (value, from) {
  * @param to {string} the id of the endpoint that should receive the message.
  * If "" the message will be sent to all participants.
  * @param payload {object} the payload of the message.
- * @throws NetworkError or InvalidStateError or Error if the operation fails.
+ * @throws NetworkError or InvalidStateError or Error if the operation fails
+ * or there is no data channel created
  */
 RTC.prototype.sendDataChannelMessage = function (to, payload) {
     if(this.dataChannels) {

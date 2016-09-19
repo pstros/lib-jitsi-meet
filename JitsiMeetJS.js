@@ -2,14 +2,14 @@ var logger = require("jitsi-meet-logger").getLogger(__filename);
 var AuthUtil = require("./modules/util/AuthUtil");
 var JitsiConnection = require("./JitsiConnection");
 var JitsiMediaDevices = require("./JitsiMediaDevices");
-var JitsiConferenceEvents = require("./JitsiConferenceEvents");
-var JitsiConnectionEvents = require("./JitsiConnectionEvents");
-var JitsiMediaDevicesEvents = require('./JitsiMediaDevicesEvents');
-var JitsiConnectionErrors = require("./JitsiConnectionErrors");
-var JitsiConferenceErrors = require("./JitsiConferenceErrors");
-var JitsiTrackEvents = require("./JitsiTrackEvents");
-var JitsiTrackErrors = require("./JitsiTrackErrors");
-var JitsiTrackError = require("./JitsiTrackError");
+import * as JitsiConferenceErrors from "./JitsiConferenceErrors";
+import * as JitsiConferenceEvents from "./JitsiConferenceEvents";
+import * as JitsiConnectionErrors from "./JitsiConnectionErrors";
+import * as JitsiConnectionEvents from "./JitsiConnectionEvents";
+import * as JitsiMediaDevicesEvents from "./JitsiMediaDevicesEvents";
+import JitsiTrackError from "./JitsiTrackError";
+import * as JitsiTrackErrors from "./JitsiTrackErrors";
+import * as JitsiTrackEvents from "./JitsiTrackEvents";
 var JitsiRecorderErrors = require("./JitsiRecorderErrors");
 var Logger = require("jitsi-meet-logger");
 var MediaType = require("./service/RTC/MediaType");
@@ -336,8 +336,5 @@ var LibJitsiMeet = {
         AuthUtil: AuthUtil
     }
 };
-
-//Setups the promise object.
-window.Promise = window.Promise || require("es6-promise").Promise;
 
 module.exports = LibJitsiMeet;

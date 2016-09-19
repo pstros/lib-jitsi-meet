@@ -25,7 +25,6 @@
     "async": "0.9.0",
     "retry": "0.6.1",
     "jssha": "1.5.0",
-    "es6-promise": "*",
     "jitsi-meet-logger": "git+https://github.com/jitsi/jitsi-meet-logger.git",
     "strophe": "^1.2.2",
     "strophejs-plugins": "^0.0.6",
@@ -33,6 +32,9 @@
     "current-executing-script": "*"
   },
   "devDependencies": {
+    "babelify": "*",
+    "babel-preset-es2015": "*",
+    "babel-polyfill": "*",
     "browserify": "11.1.x",
     "jshint": "^2.8.0",
     "precommit-hook": "^3.0.0",
@@ -42,8 +44,7 @@
   },
   "scripts": {
     "install": "npm update && npm run browserify && npm run version && npm run uglifyjs",
-
-    "browserify": "browserify -d JitsiMeetJS.js -s JitsiMeetJS | exorcist lib-jitsi-meet.js.map > lib-jitsi-meet.js && [ -s lib-jitsi-meet.js ]",
+    "browserify": "node ./start_browserify.js | exorcist lib-jitsi-meet.js.map > lib-jitsi-meet.js && [ -s lib-jitsi-meet.js ]",
     "version": "VERSION=`./get-version.sh` && echo lib-jitsi-meet version is:${VERSION} && sed -i'' -e s/{#COMMIT_HASH#}/${VERSION}/g lib-jitsi-meet.js",
     "uglifyjs": "uglifyjs -p relative lib-jitsi-meet.js -o lib-jitsi-meet.min.js --source-map lib-jitsi-meet.min.map --in-source-map lib-jitsi-meet.js.map",
     "watch": "watchify JitsiMeetJS.js -s JitsiMeetJS -o lib-jitsi-meet.js -v",

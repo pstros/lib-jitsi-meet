@@ -13,8 +13,8 @@ var AdapterJS = require("./adapter");
 var SDPUtil = require("../xmpp/SDPUtil");
 var EventEmitter = require("events");
 var screenObtainer = require("./ScreenObtainer");
-var JitsiTrackErrors = require("../../JitsiTrackErrors");
-var JitsiTrackError = require("../../JitsiTrackError");
+import JitsiTrackError from "../../JitsiTrackError";
+import * as JitsiTrackErrors from "../../JitsiTrackErrors";
 var MediaType = require("../../service/RTC/MediaType");
 var VideoType = require("../../service/RTC/VideoType");
 var CameraFacingMode = require("../../service/RTC/CameraFacingMode");
@@ -871,7 +871,8 @@ var RTCUtils = {
                         return SDPUtil.filter_special_chars(stream.label);
                     };
 
-                    onReady(options, self.getUserMediaWithConstraints);
+                    onReady(options,
+                        self.getUserMediaWithConstraints.bind(self));
                     resolve();
                 });
             } else {
@@ -886,7 +887,7 @@ var RTCUtils = {
 
             // Call onReady() if Temasys plugin is not used
             if (!RTCBrowserType.isTemasysPluginUsed()) {
-                onReady(options, this.getUserMediaWithConstraints);
+                onReady(options, this.getUserMediaWithConstraints.bind(this));
                 resolve();
             }
         }.bind(this));

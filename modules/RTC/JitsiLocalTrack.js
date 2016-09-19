@@ -2,9 +2,9 @@
 var logger = require("jitsi-meet-logger").getLogger(__filename);
 var JitsiTrack = require("./JitsiTrack");
 var RTCBrowserType = require("./RTCBrowserType");
-var JitsiTrackEvents = require('../../JitsiTrackEvents');
-var JitsiTrackErrors = require("../../JitsiTrackErrors");
-var JitsiTrackError = require("../../JitsiTrackError");
+import JitsiTrackError from "../../JitsiTrackError";
+import * as JitsiTrackErrors from "../../JitsiTrackErrors";
+import * as JitsiTrackEvents from "../../JitsiTrackEvents";
 var RTCEvents = require("../../service/RTC/RTCEvents");
 var RTCUtils = require("./RTCUtils");
 var MediaType = require('../../service/RTC/MediaType');
@@ -54,6 +54,18 @@ function JitsiLocalTrack(stream, track, mediaType, videoType, resolution,
     // we will compare current track's label with device labels from
     // enumerateDevices() list.
     this._trackEnded = false;
+
+    /**
+     * The value of bytes sent received from the statistics module.
+     */
+    this._bytesSent = null;
+
+    /**
+     * Used only for detection of audio problems. We want to check only once
+     * whether the track is sending bytes ot not. This flag is set to false
+     * after the check.
+     */
+    this._testByteSent = true;
 
     // Currently there is no way to determine with what device track was
     // created (until getConstraints() support), however we can associate tracks
@@ -194,20 +206,22 @@ JitsiLocalTrack.prototype._setMute = function (mute) {
         this.isAudioTrack() ||
         this.videoType === VideoType.DESKTOP ||
         RTCBrowserType.isFirefox()) {
-
         if(this.track)
             this.track.enabled = !mute;
     } else {
         if(mute) {
             this.dontFireRemoveEvent = true;
-
-            promise = this._removeStreamFromConferenceAsMute()
-                .then(function() {
+            promise = new Promise( (resolve, reject) => {
+                this._removeStreamFromConferenceAsMute(() => {
                     //FIXME: Maybe here we should set the SRC for the containers
                     // to something
-                    RTCUtils.stopMediaStream(self.stream);
-                    self.stream = null;
+                    RTCUtils.stopMediaStream(this.stream);
+                    this._setStream(null);
+                    resolve();
+                }, (err) => {
+                    reject(err);
                 });
+            });
         } else {
             // This path is only for camera.
             var streamOptions = {
@@ -228,7 +242,7 @@ JitsiLocalTrack.prototype._setMute = function (mute) {
                         throw new JitsiTrackError(
                             JitsiTrackErrors.TRACK_NO_STREAM_FOUND);
                     }else {
-                        self.stream = streamInfo.stream;
+                        self._setStream(streamInfo.stream);
                         self.track = streamInfo.track;
                         // This is not good when video type changes after
                         // unmute, but let's not crash here
@@ -287,28 +301,26 @@ JitsiLocalTrack.prototype._addStreamToConferenceAsUnmute = function () {
 
 /**
  * Removes stream from conference and marks it as "mute" operation.
- *
+ * @param {Function} successCallback will be called on success
+ * @param {Function} errorCallback will be called on error
  * @private
- * @returns {Promise}
  */
-JitsiLocalTrack.prototype._removeStreamFromConferenceAsMute = function () {
+JitsiLocalTrack.prototype._removeStreamFromConferenceAsMute =
+function (successCallback, errorCallback) {
     if (!this.conference || !this.conference.room) {
-        return Promise.resolve();
+        successCallback();
+        return;
     }
 
-    var self = this;
-
-    return new Promise(function(resolve, reject) {
-        self.conference.room.removeStream(
-            self.stream,
-            resolve,
-            reject,
-            {
-                mtype: self.type,
-                type: "mute",
-                ssrc: self.ssrc
-            });
-    });
+    this.conference.room.removeStream(
+        this.stream,
+        successCallback,
+        errorCallback,
+        {
+            mtype: this.type,
+            type: "mute",
+            ssrc: this.ssrc
+        });
 };
 
 /**
@@ -444,6 +456,24 @@ JitsiLocalTrack.prototype.isLocal = function () {
 JitsiLocalTrack.prototype.getDeviceId = function () {
     return this._realDeviceId || this.deviceId;
 };
+
+/**
+ * Sets the value of bytes sent statistic.
+ * @param bytesSent {intiger} the new value
+ * NOTE: used only for audio tracks to detect audio issues.
+ */
+JitsiLocalTrack.prototype._setByteSent = function (bytesSent) {
+    this._bytesSent = bytesSent;
+    if(this._testByteSent) {
+        setTimeout(function () {
+            if(this._bytesSent <= 0){
+                //we are not receiving anything from the microphone
+                this.eventEmitter.emit(JitsiTrackEvents.TRACK_AUDIO_NOT_WORKING);
+            }
+        }.bind(this), 3000);
+        this._testByteSent = false;
+    }
+}
 
 /**
  * Returns facing mode for video track from camera. For other cases (e.g. audio

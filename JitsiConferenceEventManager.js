@@ -3,8 +3,8 @@ var logger = require("jitsi-meet-logger").getLogger(__filename);
 var EventEmitterForwarder = require("./modules/util/EventEmitterForwarder");
 var XMPPEvents = require("./service/xmpp/XMPPEvents");
 var RTCEvents = require("./service/RTC/RTCEvents");
-var JitsiConferenceEvents = require("./JitsiConferenceEvents");
-var JitsiConferenceErrors = require("./JitsiConferenceErrors");
+import * as JitsiConferenceErrors from "./JitsiConferenceErrors";
+import * as JitsiConferenceEvents from "./JitsiConferenceEvents";
 var AuthenticationEvents =
     require("./service/authentication/AuthenticationEvents");
 var Statistics = require("./modules/statistics/statistics");
@@ -66,6 +66,11 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
 
                         conference.eventEmitter.emit(
                             JitsiConferenceEvents.TRACK_REMOVED, track);
+
+                        if(conference.transcriber){
+                            conference.transcriber.removeTrack(track);
+                        }
+
                         return;
                     }
                 }
@@ -220,6 +225,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
             conference.room = null;
             conference.leave.bind(conference);
         });
+
+    this.chatRoomForwarder.forward(XMPPEvents.MUC_LOCK_CHANGED,
+        JitsiConferenceEvents.LOCK_STATE_CHANGED);
 
     chatRoom.addListener(XMPPEvents.MUC_MEMBER_JOINED,
         conference.onMemberJoined.bind(conference));
@@ -479,6 +487,8 @@ JitsiConferenceEventManager.prototype.setupXMPPListeners = function () {
     var conference = this.conference;
     conference.xmpp.addListener(
         XMPPEvents.CALL_INCOMING, conference.onIncomingCall.bind(conference));
+    conference.xmpp.addListener(
+        XMPPEvents.CALL_ENDED, conference.onCallEnded.bind(conference));
 
     conference.xmpp.addListener(XMPPEvents.START_MUTED_FROM_FOCUS,
         function (audioMuted, videoMuted) {
@@ -552,6 +562,16 @@ JitsiConferenceEventManager.prototype.setupStatisticsListeners = function () {
 
     conference.statistics.addAudioProblemListener(function (ssrc) {
         conference._reportAudioProblem(ssrc);
+    });
+
+    conference.statistics.addByteSentStatsListener(function (stats) {
+        conference.getLocalTracks().forEach(function (track) {
+            var ssrc = track.getSSRC();
+            if(!track.isAudioTrack() || !ssrc || !stats.hasOwnProperty(ssrc))
+                return;
+
+            track._setByteSent(stats[ssrc]);
+        });
     });
 };
 

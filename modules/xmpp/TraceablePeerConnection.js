@@ -1,6 +1,7 @@
 /* global $ */
+import {getLogger} from "jitsi-meet-logger";
+const logger = getLogger(__filename);
 var RTC = require('../RTC/RTC');
-var logger = require("jitsi-meet-logger").getLogger(__filename);
 var RTCBrowserType = require("../RTC/RTCBrowserType.js");
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
 var transform = require('sdp-transform');
@@ -488,7 +489,7 @@ ssrcInfo) {
         // Removing all cached ssrcs for the streams that are removed or
         // muted.
         if(ssrcInfo && this.replaceSSRCs[ssrcInfo.mtype]) {
-            for(i = 0; i < this.replaceSSRCs[ssrcInfo.mtype].length; i++) {
+            for(var i = 0; i < this.replaceSSRCs[ssrcInfo.mtype].length; i++) {
                 var op = this.replaceSSRCs[ssrcInfo.mtype][i];
                 if(op.type === "unmute" &&
                     op.ssrc.ssrcs.join("_") ===

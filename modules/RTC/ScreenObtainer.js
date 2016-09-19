@@ -3,8 +3,8 @@
 var logger = require("jitsi-meet-logger").getLogger(__filename);
 var RTCBrowserType = require("./RTCBrowserType");
 var AdapterJS = require("./adapter");
-var JitsiTrackErrors = require("../../JitsiTrackErrors");
-var JitsiTrackError = require("../../JitsiTrackError");
+import JitsiTrackError from "../../JitsiTrackError";
+import * as JitsiTrackErrors from "../../JitsiTrackErrors";
 var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
 
 /**

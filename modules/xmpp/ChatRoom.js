@@ -1,6 +1,7 @@
 /* global Strophe, $, $pres, $iq, $msg */
 /* jshint -W101,-W069 */
-var logger = require("jitsi-meet-logger").getLogger(__filename);
+import {getLogger} from "jitsi-meet-logger";
+const logger = getLogger(__filename);
 var XMPPEvents = require("../../service/xmpp/XMPPEvents");
 var MediaType = require("../../service/RTC/MediaType");
 var Moderator = require("./moderator");
@@ -88,6 +89,8 @@ function ChatRoom(connection, jid, password, XMPP, options, settings) {
     this.phonePin = null;
     this.connectionTimes = {};
     this.participantPropertyListener = null;
+
+    this.locked = false;
 }
 
 ChatRoom.prototype.initPresenceMap = function () {
@@ -121,8 +124,7 @@ ChatRoom.prototype.updateDeviceAvailability = function (devices) {
 };
 
 ChatRoom.prototype.join = function (password) {
-    if(password)
-        this.password = password;
+    this.password = password;
     var self = this;
     this.moderator.allocateConferenceFocus(function () {
         self.sendPresence(true);
@@ -191,6 +193,24 @@ ChatRoom.prototype.doLeave = function () {
     this.connection.flush();
     this.connection.send(pres);
     this.connection.flush();
+};
+
+ChatRoom.prototype.discoRoomInfo = function () {
+  // https://xmpp.org/extensions/xep-0045.html#disco-roominfo
+
+  var getInfo = $iq({type: 'get', to: this.roomjid})
+    .c('query', {xmlns: Strophe.NS.DISCO_INFO});
+
+  this.connection.sendIQ(getInfo, function (result) {
+    var locked = $(result).find('>query>feature[var="muc_passwordprotected"]').length;
+    if (locked != this.locked) {
+      this.eventEmitter.emit(XMPPEvents.MUC_LOCK_CHANGED, locked);
+      this.locked = locked;
+    }
+  }.bind(this), function (error) {
+    GlobalOnErrorHandler.callErrorHandler(error);
+    logger.error("Error getting room info: ", error);
+  }.bind(this));
 };
 
 
@@ -534,6 +554,10 @@ ChatRoom.prototype.onMessage = function (msg, from) {
             var dateParts = stamp.match(/(\d{4})(\d{2})(\d{2}T\d{2}:\d{2}:\d{2})/);
             stamp = dateParts[1] + "-" + dateParts[2] + "-" + dateParts[3] + "Z";
         }
+    }
+
+    if (from==this.roomjid && $(msg).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>status[code="104"]').length) {
+      this.discoRoomInfo();
     }
 
     if (txt) {
