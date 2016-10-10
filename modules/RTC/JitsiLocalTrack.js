@@ -633,9 +633,13 @@ JitsiLocalTrack.prototype._isReceivingData = function () {
     // we aren't receiving any data from the source. We want to notify
     // the users for error if the stream is muted or ended on it's
     // creation.
+
+    //return this.stream.getTracks().some(track =>
+    //    ((!("readyState" in track) || track.readyState === "live")
+    //        && (!("muted" in track) || track.muted === false)));
+
     return this.stream.getTracks().some(track =>
-        ((!("readyState" in track) || track.readyState === "live")
-            && (!("muted" in track) || track.muted === false)));
+        ((!("readyState" in track) || track.readyState === "live"));
 };
 
 module.exports = JitsiLocalTrack;
