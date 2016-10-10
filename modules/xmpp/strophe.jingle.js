@@ -1,9 +1,9 @@
-/* jshint -W117 */
-import {getLogger} from "jitsi-meet-logger";
+/* global $, $iq, Strophe */
+
+import { getLogger } from "jitsi-meet-logger";
 const logger = getLogger(__filename);
 import JingleSession from "./JingleSessionPC";
 import XMPPEvents from "../../service/xmpp/XMPPEvents";
-import RTCBrowserType from "../RTC/RTCBrowserType";
 import GlobalOnErrorHandler from "../util/GlobalOnErrorHandler";
 import Statistics from "../statistics/statistics";
 import ConnectionPlugin from "./ConnectionPlugin";
@@ -76,7 +76,7 @@ class JingleConnectionPlugin extends ConnectionPlugin {
         const now = window.performance.now();
         // see http://xmpp.org/extensions/xep-0166.html#concepts-session
         switch (action) {
-            case 'session-initiate':
+            case 'session-initiate': {
                 logger.log("(TIME) received session-initiate:\t", now);
                 const startMuted = $(iq).find('jingle>startmuted');
                 if (startMuted && startMuted.length > 0) {
@@ -110,9 +110,10 @@ class JingleConnectionPlugin extends ConnectionPlugin {
                     this.terminate(sess.sid);
                 }
                 Statistics.analytics.sendEvent(
-                    'xmpp.session-initiate', now);
+                    'xmpp.session-initiate', {value: now});
                 break;
-            case 'session-terminate':
+            }
+            case 'session-terminate': {
                 logger.log('terminating...', sess.sid);
                 let reasonCondition = null;
                 let reasonText = null;
@@ -125,17 +126,19 @@ class JingleConnectionPlugin extends ConnectionPlugin {
                 this.eventEmitter.emit(XMPPEvents.CALL_ENDED,
                     sess, reasonCondition, reasonText);
                 break;
+            }
             case 'transport-replace':
                 logger.info("(TIME) Start transport replace", now);
                 Statistics.analytics.sendEvent(
-                    'xmpp.transport-replace.start', now);
+                    'xmpp.transport-replace.start', {value: now});
 
                 sess.replaceTransport($(iq).find('>jingle'), () => {
                     const successTime = window.performance.now();
                     logger.info(
                         "(TIME) Transport replace success!", successTime);
                     Statistics.analytics.sendEvent(
-                        'xmpp.transport-replace.success', successTime);
+                        'xmpp.transport-replace.success',
+                        {value: successTime});
                 }, (error) => {
                     GlobalOnErrorHandler.callErrorHandler(error);
                     logger.error('Transport replace failed', error);
@@ -203,7 +206,7 @@ class JingleConnectionPlugin extends ConnectionPlugin {
                             iceservers.push(dict);
                             break;
                         case 'turn':
-                        case 'turns':
+                        case 'turns': {
                             dict.url = type + ':';
                             const username = el.attr('username');
                             // https://code.google.com/p/webrtc/issues/detail?id=1508
@@ -234,6 +237,7 @@ class JingleConnectionPlugin extends ConnectionPlugin {
                                 || dict.credential;
                             iceservers.push(dict);
                             break;
+                        }
                     }
                 });
                 self.ice_config.iceServers = iceservers;
@@ -251,7 +255,7 @@ class JingleConnectionPlugin extends ConnectionPlugin {
         const data = {};
         Object.keys(this.sessions).forEach((sid) => {
             const session = self.sessions[sid];
-            const pc = session.peerconnection
+            const pc = session.peerconnection;
             if (pc && pc.updateLog) {
                 // FIXME: should probably be a .dump call
                 data["jingle_" + sid] = {

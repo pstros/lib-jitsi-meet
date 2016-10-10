@@ -1,14 +1,14 @@
 /* global require */
-/* jshint -W101 */
 
+var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
 var logger = require("jitsi-meet-logger").getLogger(__filename);
 var RTCBrowserType = require("../RTC/RTCBrowserType");
-var StatisticsEvents = require("../../service/statistics/Events");
-var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
+import * as StatisticsEvents from "../../service/statistics/Events";
 
 /* Whether we support the browser we are running into for logging statistics */
 var browserSupported = RTCBrowserType.isChrome() ||
-        RTCBrowserType.isOpera() || RTCBrowserType.isFirefox();
+        RTCBrowserType.isOpera() || RTCBrowserType.isFirefox() ||
+        RTCBrowserType.isNWJS();
 
 /**
  * The LibJitsiMeet browser-agnostic names of the browser-specific keys reported
@@ -44,6 +44,8 @@ KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME] = {
     "audioOutputLevel": "audioOutputLevel"
 };
 KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_OPERA] =
+    KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME];
+KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_NWJS] =
     KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME];
 KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_IEXPLORER] =
     KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME];
@@ -457,6 +459,7 @@ StatsCollector.prototype._defineGetStatValueMethod = function (keys) {
     switch (this._browserType) {
     case RTCBrowserType.RTC_BROWSER_CHROME:
     case RTCBrowserType.RTC_BROWSER_OPERA:
+    case RTCBrowserType.RTC_BROWSER_NWJS:
         // TODO What about other types of browser which are based on Chrome such
         // as NW.js? Every time we want to support a new type browser we have to
         // go and add more conditions (here and in multiple other places).
@@ -464,7 +467,7 @@ StatsCollector.prototype._defineGetStatValueMethod = function (keys) {
         // example, if item has a stat property of type function, then it's very
         // likely that whoever defined it wanted you to call it in order to
         // retrieve the value associated with a specific key.
-        itemStatByKey = function (item, key) { return item.stat(key) };
+        itemStatByKey = function (item, key) { return item.stat(key); };
         break;
     case RTCBrowserType.RTC_BROWSER_REACT_NATIVE:
         // The implementation provided by react-native-webrtc follows the
@@ -484,14 +487,14 @@ StatsCollector.prototype._defineGetStatValueMethod = function (keys) {
         };
         break;
     default:
-        itemStatByKey = function (item, key) { return item[key] };
+        itemStatByKey = function (item, key) { return item[key]; };
     }
 
     // Compose the 2 functions defined above to get a function which retrieves
     // the value from a specific report returned by RTCPeerConnection#getStats
     // associated with a specific LibJitsiMeet browser-agnostic name.
     return function (item, name) {
-        return itemStatByKey(item, keyFromName(name))
+        return itemStatByKey(item, keyFromName(name));
     };
 };
 
@@ -536,7 +539,7 @@ StatsCollector.prototype.processStatsReport = function () {
             var conferenceStatsTransport = this.conferenceStats.transport;
             if(!conferenceStatsTransport.some(function (t) { return (
                         t.ip == ip && t.type == type && t.localip == localip
-                    )})) {
+                    );})) {
                 conferenceStatsTransport.push(
                     {ip: ip, type: type, localip: localip});
             }
@@ -727,9 +730,9 @@ StatsCollector.prototype.processStatsReport = function () {
             calculatePacketLoss(lostPackets.upload, totalPackets.upload)
     };
     this.eventEmitter.emit(StatisticsEvents.CONNECTION_STATS, {
+            "bandwidth": this.conferenceStats.bandwidth,
             "bitrate": this.conferenceStats.bitrate,
             "packetLoss": this.conferenceStats.packetLoss,
-            "bandwidth": this.conferenceStats.bandwidth,
             "resolution": resolutions,
             "transport": this.conferenceStats.transport
         });
@@ -749,10 +752,8 @@ StatsCollector.prototype.processAudioLevelReport = function () {
     for (var idx in this.currentAudioLevelsReport) {
         var now = this.currentAudioLevelsReport[idx];
 
-        //if we don't have "packetsReceived" this is local stream
-        if (now.type != 'ssrc' || !getStatValue(now, 'packetsReceived')) {
+        if (now.type != 'ssrc')
             continue;
-        }
 
         var before = this.baselineAudioLevelsReport[idx];
         var ssrc = getStatValue(now, 'ssrc');
@@ -784,12 +785,14 @@ StatsCollector.prototype.processAudioLevelReport = function () {
         }
 
         if (audioLevel) {
-            // TODO: can't find specs about what this value really is,
-            // but it seems to vary between 0 and around 32k.
+            const isLocal = !getStatValue(now, 'packetsReceived');
+
+            // TODO: Can't find specs about what this value really is, but it
+            // seems to vary between 0 and around 32k.
             audioLevel = audioLevel / 32767;
             ssrcStats.setSsrcAudioLevel(audioLevel);
             this.eventEmitter.emit(
-                StatisticsEvents.AUDIO_LEVEL, ssrc, audioLevel);
+                StatisticsEvents.AUDIO_LEVEL, ssrc, audioLevel, isLocal);
         }
     }
 };

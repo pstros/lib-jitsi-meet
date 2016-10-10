@@ -103,11 +103,13 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
         {
             for (var ckey in chatRoom.connectionTimes){
                 var cvalue = chatRoom.connectionTimes[ckey];
-                Statistics.analytics.sendEvent('conference.' + ckey, cvalue);
+                Statistics.analytics.sendEvent('conference.' + ckey,
+                    {value: cvalue});
             }
             for (var xkey in chatRoom.xmpp.connectionTimes){
                 var xvalue = chatRoom.xmpp.connectionTimes[xkey];
-                Statistics.analytics.sendEvent('xmpp.' + xkey, xvalue);
+                Statistics.analytics.sendEvent('xmpp.' + xkey,
+                    {value: xvalue});
             }
         });
 
@@ -118,6 +120,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
     this.chatRoomForwarder.forward(XMPPEvents.ROOM_CONNECT_ERROR,
         JitsiConferenceEvents.CONFERENCE_FAILED,
         JitsiConferenceErrors.CONNECTION_ERROR);
+    this.chatRoomForwarder.forward(XMPPEvents.ROOM_CONNECT_NOT_ALLOWED_ERROR,
+        JitsiConferenceEvents.CONFERENCE_FAILED,
+        JitsiConferenceErrors.NOT_ALLOWED_ERROR);
 
     this.chatRoomForwarder.forward(XMPPEvents.ROOM_MAX_USERS_ERROR,
         JitsiConferenceEvents.CONFERENCE_FAILED,
@@ -155,7 +160,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
         });
 
     chatRoom.addListener(XMPPEvents.CONNECTION_ICE_FAILED,
-        function (pc) {
+        function () {
             chatRoom.eventEmitter.emit(
                 XMPPEvents.CONFERENCE_SETUP_FAILED,
                 new Error("ICE fail"));
@@ -191,7 +196,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
         JitsiConferenceEvents.CONNECTION_INTERRUPTED);
     chatRoom.addListener(XMPPEvents.CONNECTION_INTERRUPTED,
         function () {
-            Statistics.analytics.sendEvent('connection.interrupted');
+            Statistics.sendEventToAll('connection.interrupted');
         });
 
     this.chatRoomForwarder.forward(XMPPEvents.RECORDER_STATE_CHANGED,
@@ -202,6 +207,10 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
 
     this.chatRoomForwarder.forward(XMPPEvents.CONNECTION_RESTORED,
         JitsiConferenceEvents.CONNECTION_RESTORED);
+    chatRoom.addListener(XMPPEvents.CONNECTION_RESTORED,
+        function () {
+            Statistics.sendEventToAll('connection.restored');
+        });
 
     this.chatRoomForwarder.forward(XMPPEvents.CONFERENCE_SETUP_FAILED,
         JitsiConferenceEvents.CONFERENCE_FAILED,
@@ -233,6 +242,8 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
         conference.onMemberJoined.bind(conference));
     chatRoom.addListener(XMPPEvents.MUC_MEMBER_LEFT,
         conference.onMemberLeft.bind(conference));
+    this.chatRoomForwarder.forward(XMPPEvents.MUC_LEFT,
+        JitsiConferenceEvents.CONFERENCE_LEFT);
 
     chatRoom.addListener(XMPPEvents.DISPLAY_NAME_CHANGED,
         conference.onDisplayNameChanged.bind(conference));
@@ -458,7 +469,8 @@ JitsiConferenceEventManager.prototype.setupRTCListeners = function () {
         var now = window.performance.now();
         logger.log("(TIME) data channel opened ", now);
         conference.room.connectionTimes["data.channel.opened"] = now;
-        Statistics.analytics.sendEvent('conference.dataChannel.open', now);
+        Statistics.analytics.sendEvent('conference.dataChannel.open',
+            {value: now});
     });
 
     this.rtcForwarder.forward(RTCEvents.LASTN_CHANGED,

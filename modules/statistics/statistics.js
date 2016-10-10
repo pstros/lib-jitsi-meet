@@ -1,13 +1,13 @@
 /* global require */
-var LocalStats = require("./LocalStatsCollector.js");
-var logger = require("jitsi-meet-logger").getLogger(__filename);
-var RTPStats = require("./RTPStatsCollector.js");
-var EventEmitter = require("events");
-var StatisticsEvents = require("../../service/statistics/Events");
 var AnalyticsAdapter = require("./AnalyticsAdapter");
 var CallStats = require("./CallStats");
-var ScriptUtil = require('../util/ScriptUtil');
+var EventEmitter = require("events");
 import JitsiTrackError from "../../JitsiTrackError";
+var logger = require("jitsi-meet-logger").getLogger(__filename);
+var LocalStats = require("./LocalStatsCollector.js");
+var RTPStats = require("./RTPStatsCollector.js");
+var ScriptUtil = require('../util/ScriptUtil');
+import * as StatisticsEvents from "../../service/statistics/Events";
 
 /**
  * True if callstats API is loaded
@@ -25,7 +25,7 @@ function loadCallStatsAPI(customScriptUrl) {
     if(!isCallstatsLoaded) {
         ScriptUtil.loadScript(
                 customScriptUrl ? customScriptUrl :
-                    'https://api.callstats.io/static/callstats.min.js',
+                    'https://api.callstats.io/static/callstats-ws.min.js',
                 /* async */ true,
                 /* prepend */ true);
         isCallstatsLoaded = true;
@@ -259,11 +259,6 @@ Statistics.prototype.startCallStats = function (session, settings) {
     if(this.callStatsIntegrationEnabled && !this.callStatsStarted) {
         // Here we overwrite the previous instance, but it must be bound to
         // the new PeerConnection
-        // FIXME CallStats does not show the participant after
-        // stopCallStats/startCallStats, the issue is being investigated on both
-        // our and CallStats side, but given how rare this situation should
-        // be, we need to have this change merged. Without it "invalid pcHash"
-        // error is reported(lib calls are made for the old PeerConnection).
         this.callstats = new CallStats(session, settings, this.options);
         Statistics.callsStatsInstances.push(this.callstats);
         this.callStatsStarted = true;
@@ -298,12 +293,13 @@ Statistics.prototype.isCallstatsEnabled = function () {
 };
 
 /**
- * Notifies CallStats for ice connection failed
+ * Notifies CallStats and analytics(if present) for ice connection failed
  * @param {RTCPeerConnection} pc connection on which failure occured.
  */
 Statistics.prototype.sendIceConnectionFailedEvent = function (pc) {
     if(this.callstats)
         this.callstats.sendIceConnectionFailedEvent(pc, this.callstats);
+    Statistics.analytics.sendEvent('connection.ice_failed');
 };
 
 /**
@@ -482,7 +478,8 @@ Statistics.sendLog = function (m) {
 Statistics.prototype.sendFeedback = function(overall, detailed) {
     if(this.callstats)
         this.callstats.sendFeedback(overall, detailed);
-    Statistics.analytics.sendEvent('feedback.rating', overall);
+    Statistics.analytics.sendEvent("feedback.rating",
+        {value: overall, detailed: detailed});
 };
 
 Statistics.LOCAL_JID = require("../../service/statistics/constants").LOCAL_JID;
@@ -502,12 +499,12 @@ Statistics.reportGlobalError = function (error) {
 
 /**
  * Sends event to analytics and callstats.
- * @param eventName {string} the event name.
- * @param msg {String} optional event info/messages.
+ * @param {string} eventName the event name.
+ * @param {Object} data the data to be sent.
  */
-Statistics.sendEventToAll = function (eventName, msg) {
-    this.analytics.sendEvent(eventName, null, msg);
-    Statistics.sendLog({name: eventName, msg: msg ? msg : ""});
+Statistics.sendEventToAll = function (eventName, data) {
+    this.analytics.sendEvent(eventName, data);
+    Statistics.sendLog({name: eventName, data});
 };
 
 module.exports = Statistics;

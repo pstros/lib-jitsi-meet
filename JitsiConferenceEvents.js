@@ -82,6 +82,16 @@ export const LOCK_STATE_CHANGED = "conference.lock_state_changed";
  */
 export const MESSAGE_RECEIVED = "conference.messageReceived";
 /**
+ * Event fired when JVB sends notification about interrupted/restored user's
+ * ICE connection status. First argument is the ID of the participant and
+ * the seconds is a boolean indicating if the connection is currently
+ * active(true = active, false = interrupted).
+ * The current status value can be obtained by calling
+ * JitsiParticipant.isConnectionActive().
+ */
+export const PARTICIPANT_CONN_STATUS_CHANGED
+    = "conference.participant_conn_status_changed";
+/**
  * Indicates that a the value of a specific property of a specific participant
  * has changed.
  */
@@ -108,6 +118,10 @@ export const STARTED_MUTED = "conference.started_muted";
  * Indicates that subject of the conference has changed.
  */
 export const SUBJECT_CHANGED = "conference.subjectChanged";
+/**
+ * Event indicates that local user is talking while he muted himself
+ */
+export const TALK_WHILE_MUTED = "conference.talk_while_muted";
 /**
  * A new media track was added to the conference. The event provides the
  * following parameters to its listeners:

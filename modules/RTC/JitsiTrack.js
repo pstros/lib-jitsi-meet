@@ -1,7 +1,6 @@
 /* global __filename, module */
 var logger = require("jitsi-meet-logger").getLogger(__filename);
 var RTCBrowserType = require("./RTCBrowserType");
-var RTCEvents = require("../../service/RTC/RTCEvents");
 var RTCUtils = require("./RTCUtils");
 import * as JitsiTrackEvents from "../../JitsiTrackEvents";
 var EventEmitter = require("events");
@@ -113,7 +112,7 @@ JitsiTrack.prototype._setHandler = function (type, handler) {
             track[trackHandler2Prop[type]] = handler;
         }, this);
     }
-}
+};
 
 /**
  * Sets the stream property of JitsiTrack object and sets all stored handlers
@@ -126,7 +125,7 @@ JitsiTrack.prototype._setStream = function (stream) {
         typeof(this.handlers[type]) === "function" &&
             this._setHandler(type, this.handlers[type]);
     }, this);
-}
+};
 
 /**
  * Returns the type (audio or video) of this track.
@@ -147,6 +146,15 @@ JitsiTrack.prototype.isAudioTrack = function () {
  */
 JitsiTrack.prototype.isVideoTrack = function () {
     return this.getType() === MediaType.VIDEO;
+};
+
+/**
+ * Checks whether this is a local track.
+ * @abstract
+ * @return {boolean} 'true' if it's a local track or 'false' otherwise.
+ */
+JitsiTrack.prototype.isLocal = function () {
+    throw new Error("Not implemented by subclass");
 };
 
 /**
@@ -266,6 +274,7 @@ JitsiTrack.prototype.detach = function (container) {
  *        method has been called previously on video or audio HTML element.
  * @private
  */
+// eslint-disable-next-line no-unused-vars
 JitsiTrack.prototype._attachTTFMTracker = function (container) {
 };
 

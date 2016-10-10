@@ -81,6 +81,8 @@ var XMPPEvents = {
     MUC_MEMBER_JOINED: "xmpp.muc_member_joined",
     // Designates an event indicating that a participant left the XMPP MUC.
     MUC_MEMBER_LEFT: "xmpp.muc_member_left",
+    // Designates an event indicating that local participant left the muc
+    MUC_LEFT: "xmpp.muc_left",
     // Designates an event indicating that the MUC role of a participant has
     // changed.
     MUC_ROLE_CHANGED: "xmpp.muc_role_changed",
@@ -135,6 +137,7 @@ var XMPPEvents = {
     REMOTE_TRACK_REMOVED: "xmpp.remote_track_removed",
     RESERVATION_ERROR: "xmpp.room_reservation_error",
     ROOM_CONNECT_ERROR: 'xmpp.room_connect_error',
+    ROOM_CONNECT_NOT_ALLOWED_ERROR: 'xmpp.room_connect_error.not_allowed',
     ROOM_JOIN_ERROR: 'xmpp.room_join_error',
     /**
      * Indicates that max users limit has been reached.
