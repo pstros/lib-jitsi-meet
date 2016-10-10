@@ -639,7 +639,7 @@ JitsiLocalTrack.prototype._isReceivingData = function () {
     //        && (!("muted" in track) || track.muted === false)));
 
     return this.stream.getTracks().some(track =>
-        ((!("readyState" in track) || track.readyState === "live"));
+        ((!("readyState" in track) || track.readyState === "live")));
 };
 
 module.exports = JitsiLocalTrack;
