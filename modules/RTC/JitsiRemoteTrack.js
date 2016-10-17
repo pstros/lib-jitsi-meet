@@ -35,7 +35,7 @@ function JitsiRemoteTrack(rtc, conference, ownerJid, stream, track, mediaType, v
     // increase ttfm values
     this.hasBeenMuted = muted;
     // Bind 'onmute' and 'onunmute' event handlers
-    if (this.rtc && this.track && RTCBrowserType.isTemasysPluginUsed())
+    if (this.rtc && this.track && !RTCBrowserType.isTemasysPluginUsed())
         this._bindMuteHandlers();
 }
 
