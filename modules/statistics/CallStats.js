@@ -47,6 +47,12 @@ var fabricEvent = {
 
 var callStats = null;
 
+/**
+ * The user id to report to callstats as destination.
+ * @type {string}
+ */
+const DEFAULT_REMOTE_USER = "jitsi";
+
 function initCallback (err, msg) {
     logger.log("CallStats Status: err=" + err + " msg=" + msg);
 
@@ -59,7 +65,7 @@ function initCallback (err, msg) {
     }
 
     var ret = callStats.addNewFabric(this.peerconnection,
-        Strophe.getResourceFromJid(this.session.peerjid),
+        DEFAULT_REMOTE_USER,
         callStats.fabricUsage.multiplex,
         this.confID,
         this.pcCallback.bind(this));
@@ -68,7 +74,7 @@ function initCallback (err, msg) {
 
     if(!fabricInitialized) {
         CallStats.initializeFailed = true;
-        console.log("callstats fabric not initilized", ret.message);
+        logger.log("callstats fabric not initilized", ret.message);
         return;
     }
 
@@ -139,14 +145,20 @@ function _try_catch (f) {
 var CallStats = _try_catch(function(jingleSession, Settings, options) {
     try{
         CallStats.feedbackEnabled = false;
-        callStats = new callstats($, io, jsSHA);
+        callStats = new callstats($, io, jsSHA); // eslint-disable-line new-cap
 
-        this.session = jingleSession;
         this.peerconnection = jingleSession.peerconnection.peerconnection;
 
-        this.userID = Settings.getCallStatsUserName();
+        this.userID = {
+            aliasName: Strophe.getResourceFromJid(jingleSession.room.myroomjid),
+            userName: Settings.getCallStatsUserName()
+        };
 
-        this.confID = this.session.room.roomjid;
+        //Original confID
+        //this.confID = this.session.room.roomjid;
+        const location = window.location;
+        // The confID is case sensitive!!!
+        this.confID = location.hostname + "/" + options.roomName;
 
         this.callStatsID = options.callStatsID;
         this.callStatsSecret = options.callStatsSecret;
@@ -159,9 +171,9 @@ var CallStats = _try_catch(function(jingleSession, Settings, options) {
             initCallback.bind(this));
 
     } catch (e) {
-        // The callstats.io API failed to initialize (e.g. because its
-        // download failed to succeed in general or on time). Further
-        // attempts to utilize it cannot possibly succeed.
+        // The callstats.io API failed to initialize (e.g. because its download
+        // did not succeed in general or on time). Further attempts to utilize
+        // it cannot possibly succeed.
         GlobalOnErrorHandler.callErrorHandler(e);
         callStats = null;
         logger.error(e);
@@ -228,10 +240,8 @@ var reportType = {
 };
 
 CallStats.prototype.pcCallback = _try_catch(function (err, msg) {
-    if (!callStats) {
-        return;
-    }
-    logger.log("Monitoring status: "+ err + " msg: " + msg);
+    if (callStats && err !== 'success')
+        logger.error("Monitoring status: "+ err + " msg: " + msg);
 });
 
 /**
@@ -251,11 +261,9 @@ function (ssrc, isLocal, usageLabel, containerId) {
     if(!callStats) {
         return;
     }
+
     // 'focus' is default remote user ID for now
-    var callStatsId = 'focus';
-    if (isLocal) {
-        callStatsId = this.userID;
-    }
+    const callStatsId = isLocal ? this.userID : 'focus';
 
     _try_catch(function() {
         logger.debug(
@@ -265,8 +273,7 @@ function (ssrc, isLocal, usageLabel, containerId) {
             this.confID,
             ssrc,
             usageLabel,
-            containerId
-        );
+            containerId);
         if(CallStats.initialized) {
             callStats.associateMstWithUserID(
                 this.peerconnection,
@@ -274,17 +281,16 @@ function (ssrc, isLocal, usageLabel, containerId) {
                 this.confID,
                 ssrc,
                 usageLabel,
-                containerId
-            );
+                containerId);
         }
         else {
             CallStats.reportsQueue.push({
                 type: reportType.MST_WITH_USERID,
                 data: {
-                    callStatsId: callStatsId,
-                    ssrc: ssrc,
-                    usageLabel: usageLabel,
-                    containerId: containerId
+                    callStatsId,
+                    containerId,
+                    ssrc,
+                    usageLabel
                 }
             });
             CallStats._checkInitialize();
@@ -299,13 +305,12 @@ function (ssrc, isLocal, usageLabel, containerId) {
  * @param {CallStats} cs callstats instance related to the event
  */
 CallStats.sendMuteEvent = _try_catch(function (mute, type, cs) {
+    let event;
 
-    var event = null;
     if (type === "video") {
-        event = (mute? fabricEvent.videoPause : fabricEvent.videoResume);
-    }
-    else {
-        event = (mute? fabricEvent.audioMute : fabricEvent.audioUnmute);
+        event = mute ? fabricEvent.videoPause : fabricEvent.videoResume;
+    } else {
+        event = mute ? fabricEvent.audioMute : fabricEvent.audioUnmute;
     }
 
     CallStats._reportEvent.call(cs, event);
@@ -318,9 +323,9 @@ CallStats.sendMuteEvent = _try_catch(function (mute, type, cs) {
  * @param {CallStats} cs callstats instance related to the event
  */
 CallStats.sendScreenSharingEvent = _try_catch(function (start, cs) {
-
-    CallStats._reportEvent.call(cs,
-        start? fabricEvent.screenShareStart : fabricEvent.screenShareStop);
+    CallStats._reportEvent.call(
+        cs,
+        start ? fabricEvent.screenShareStart : fabricEvent.screenShareStop);
 });
 
 /**
@@ -328,9 +333,7 @@ CallStats.sendScreenSharingEvent = _try_catch(function (start, cs) {
  * @param {CallStats} cs callstats instance related to the event
  */
 CallStats.sendDominantSpeakerEvent = _try_catch(function (cs) {
-
-    CallStats._reportEvent.call(cs,
-        fabricEvent.dominantSpeaker);
+    CallStats._reportEvent.call(cs, fabricEvent.dominantSpeaker);
 });
 
 /**
@@ -339,7 +342,6 @@ CallStats.sendDominantSpeakerEvent = _try_catch(function (cs) {
  * @param {CallStats} cs callstats instance related to the event
  */
 CallStats.sendActiveDeviceListEvent = _try_catch(function (devicesData, cs) {
-
     CallStats._reportEvent.call(cs, fabricEvent.activeDeviceList, devicesData);
 });
 
@@ -410,10 +412,10 @@ function(overallFeedback, detailedFeedback) {
     if(!CallStats.feedbackEnabled) {
         return;
     }
+
     var feedbackString =    '{"userID":"' + this.userID + '"' +
                             ', "overall":' + overallFeedback +
                             ', "comment": "' + detailedFeedback + '"}';
-
     var feedbackJSON = JSON.parse(feedbackString);
 
     callStats.sendUserFeedback(this.confID, feedbackJSON);
@@ -516,8 +518,7 @@ CallStats.sendAddIceCandidateFailed = _try_catch(function (e, pc, cs) {
  * @param {CallStats} cs callstats instance related to the error (optional)
  */
 CallStats.sendApplicationLog = _try_catch(function (e, cs) {
-    CallStats._reportError
-        .call(cs, wrtcFuncNames.applicationLog, e, null);
+    CallStats._reportError.call(cs, wrtcFuncNames.applicationLog, e, null);
 });
 
 /**

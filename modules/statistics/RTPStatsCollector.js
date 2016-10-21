@@ -1,14 +1,14 @@
 /* global require */
-/* jshint -W101 */
 
+var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
 var logger = require("jitsi-meet-logger").getLogger(__filename);
 var RTCBrowserType = require("../RTC/RTCBrowserType");
-var StatisticsEvents = require("../../service/statistics/Events");
-var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
+import * as StatisticsEvents from "../../service/statistics/Events";
 
 /* Whether we support the browser we are running into for logging statistics */
 var browserSupported = RTCBrowserType.isChrome() ||
-        RTCBrowserType.isOpera() || RTCBrowserType.isFirefox();
+        RTCBrowserType.isOpera() || RTCBrowserType.isFirefox() ||
+        RTCBrowserType.isNWJS();
 
 /**
  * The LibJitsiMeet browser-agnostic names of the browser-specific keys reported
@@ -44,6 +44,8 @@ KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME] = {
     "audioOutputLevel": "audioOutputLevel"
 };
 KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_OPERA] =
+    KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME];
+KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_NWJS] =
     KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME];
 KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_IEXPLORER] =
     KEYS_BY_BROWSER_TYPE[RTCBrowserType.RTC_BROWSER_CHROME];
@@ -202,16 +204,13 @@ function ConferenceStats() {
  * @param audioLevelsInterval
  * @param statsInterval stats refresh interval given in ms.
  * @param eventEmitter
- * @param config {object} supports the following properties: disableAudioLevels,
- * disableStats, logStats
  * @constructor
  */
 function StatsCollector(
         peerconnection,
         audioLevelsInterval,
         statsInterval,
-        eventEmitter,
-        config) {
+        eventEmitter) {
     // StatsCollector depends entirely on the format of the reports returned by
     // RTCPeerConnection#getStats. Given that the value of
     // RTCBrowserType#getBrowserType() is very unlikely to change at runtime, it
@@ -247,7 +246,6 @@ function StatsCollector(
     this.baselineStatsReport = null;
     this.audioLevelsIntervalId = null;
     this.eventEmitter = eventEmitter;
-    this.config = config || {};
     this.conferenceStats = new ConferenceStats();
 
     /**
@@ -312,33 +310,35 @@ StatsCollector.prototype.errorCallback = function (error) {
 /**
  * Starts stats updates.
  */
-StatsCollector.prototype.start = function () {
+StatsCollector.prototype.start = function (startAudioLevelStats) {
     var self = this;
-    this.audioLevelsIntervalId = setInterval(
-        function () {
-            // Interval updates
-            self.peerconnection.getStats(
-                function (report) {
-                    var results = null;
-                    if (!report || !report.result ||
-                        typeof report.result != 'function') {
-                        results = report;
-                    }
-                    else {
-                        results = report.result();
-                    }
-                    self.currentAudioLevelsReport = results;
-                    self.processAudioLevelReport();
-                    self.baselineAudioLevelsReport =
-                        self.currentAudioLevelsReport;
-                },
-                self.errorCallback
-            );
-        },
-        self.audioLevelsIntervalMilis
-    );
+    if(startAudioLevelStats) {
+        this.audioLevelsIntervalId = setInterval(
+            function () {
+                // Interval updates
+                self.peerconnection.getStats(
+                    function (report) {
+                        var results = null;
+                        if (!report || !report.result ||
+                            typeof report.result != 'function') {
+                            results = report;
+                        }
+                        else {
+                            results = report.result();
+                        }
+                        self.currentAudioLevelsReport = results;
+                        self.processAudioLevelReport();
+                        self.baselineAudioLevelsReport =
+                            self.currentAudioLevelsReport;
+                    },
+                    self.errorCallback
+                );
+            },
+            self.audioLevelsIntervalMilis
+        );
+    }
 
-    if (!this.config.disableStats && browserSupported) {
+    if (browserSupported) {
         this.statsIntervalId = setInterval(
             function () {
                 // Interval updates
@@ -372,8 +372,7 @@ StatsCollector.prototype.start = function () {
         );
     }
 
-    if (this.config.logStats
-            && browserSupported
+    if (browserSupported
             // logging statistics does not support firefox
             && this._browserType !== RTCBrowserType.RTC_BROWSER_FIREFOX) {
         this.gatherStatsIntervalId = setInterval(
@@ -460,6 +459,7 @@ StatsCollector.prototype._defineGetStatValueMethod = function (keys) {
     switch (this._browserType) {
     case RTCBrowserType.RTC_BROWSER_CHROME:
     case RTCBrowserType.RTC_BROWSER_OPERA:
+    case RTCBrowserType.RTC_BROWSER_NWJS:
         // TODO What about other types of browser which are based on Chrome such
         // as NW.js? Every time we want to support a new type browser we have to
         // go and add more conditions (here and in multiple other places).
@@ -467,7 +467,7 @@ StatsCollector.prototype._defineGetStatValueMethod = function (keys) {
         // example, if item has a stat property of type function, then it's very
         // likely that whoever defined it wanted you to call it in order to
         // retrieve the value associated with a specific key.
-        itemStatByKey = function (item, key) { return item.stat(key) };
+        itemStatByKey = function (item, key) { return item.stat(key); };
         break;
     case RTCBrowserType.RTC_BROWSER_REACT_NATIVE:
         // The implementation provided by react-native-webrtc follows the
@@ -487,14 +487,14 @@ StatsCollector.prototype._defineGetStatValueMethod = function (keys) {
         };
         break;
     default:
-        itemStatByKey = function (item, key) { return item[key] };
+        itemStatByKey = function (item, key) { return item[key]; };
     }
 
     // Compose the 2 functions defined above to get a function which retrieves
     // the value from a specific report returned by RTCPeerConnection#getStats
     // associated with a specific LibJitsiMeet browser-agnostic name.
     return function (item, name) {
-        return itemStatByKey(item, keyFromName(name))
+        return itemStatByKey(item, keyFromName(name));
     };
 };
 
@@ -507,6 +507,7 @@ StatsCollector.prototype.processStatsReport = function () {
     }
 
     var getStatValue = this._getStatValue;
+    var byteSentStats = {};
 
     for (var idx in this.currentStatsReport) {
         var now = this.currentStatsReport[idx];
@@ -538,7 +539,7 @@ StatsCollector.prototype.processStatsReport = function () {
             var conferenceStatsTransport = this.conferenceStats.transport;
             if(!conferenceStatsTransport.some(function (t) { return (
                         t.ip == ip && t.type == type && t.localip == localip
-                    )})) {
+                    );})) {
                 conferenceStatsTransport.push(
                     {ip: ip, type: type, localip: localip});
             }
@@ -622,8 +623,16 @@ StatsCollector.prototype.processStatsReport = function () {
                 = nowBytesTransmitted - getStatValue(before, "bytesReceived");
         }
         nowBytesTransmitted = getStatValue(now, "bytesSent");
-        if (nowBytesTransmitted) {
-            bytesSent = nowBytesTransmitted - getStatValue(before, "bytesSent");
+        if(typeof(nowBytesTransmitted) === "number" ||
+            typeof(nowBytesTransmitted) === "string") {
+            nowBytesTransmitted = Number(nowBytesTransmitted);
+            if(!isNaN(nowBytesTransmitted)){
+                byteSentStats[ssrc] = nowBytesTransmitted;
+                if (nowBytesTransmitted > 0) {
+                    bytesSent = nowBytesTransmitted -
+                        getStatValue(before, "bytesSent");
+                }
+            }
         }
 
         var time = Math.round((now.timestamp - before.timestamp) / 1000);
@@ -687,7 +696,6 @@ StatsCollector.prototype.processStatsReport = function () {
     Object.keys(this.ssrc2stats).forEach(
         function (ssrc) {
             var ssrcStats = this.ssrc2stats[ssrc];
-
             // process package loss stats
             var ssrc2Loss = ssrcStats.ssrc2Loss;
             var type = ssrc2Loss.isDownloadStream ? "download" : "upload";
@@ -707,6 +715,8 @@ StatsCollector.prototype.processStatsReport = function () {
         this
     );
 
+    this.eventEmitter.emit(StatisticsEvents.BYTE_SENT_STATS, byteSentStats);
+
     this.conferenceStats.bitrate
       = {"upload": bitrateUpload, "download": bitrateDownload};
 
@@ -720,9 +730,9 @@ StatsCollector.prototype.processStatsReport = function () {
             calculatePacketLoss(lostPackets.upload, totalPackets.upload)
     };
     this.eventEmitter.emit(StatisticsEvents.CONNECTION_STATS, {
+            "bandwidth": this.conferenceStats.bandwidth,
             "bitrate": this.conferenceStats.bitrate,
             "packetLoss": this.conferenceStats.packetLoss,
-            "bandwidth": this.conferenceStats.bandwidth,
             "resolution": resolutions,
             "transport": this.conferenceStats.transport
         });
@@ -742,10 +752,8 @@ StatsCollector.prototype.processAudioLevelReport = function () {
     for (var idx in this.currentAudioLevelsReport) {
         var now = this.currentAudioLevelsReport[idx];
 
-        //if we don't have "packetsReceived" this is local stream
-        if (now.type != 'ssrc' || !getStatValue(now, 'packetsReceived')) {
+        if (now.type != 'ssrc')
             continue;
-        }
 
         var before = this.baselineAudioLevelsReport[idx];
         var ssrc = getStatValue(now, 'ssrc');
@@ -777,12 +785,14 @@ StatsCollector.prototype.processAudioLevelReport = function () {
         }
 
         if (audioLevel) {
-            // TODO: can't find specs about what this value really is,
-            // but it seems to vary between 0 and around 32k.
+            const isLocal = !getStatValue(now, 'packetsReceived');
+
+            // TODO: Can't find specs about what this value really is, but it
+            // seems to vary between 0 and around 32k.
             audioLevel = audioLevel / 32767;
             ssrcStats.setSsrcAudioLevel(audioLevel);
             this.eventEmitter.emit(
-                StatisticsEvents.AUDIO_LEVEL, ssrc, audioLevel);
+                StatisticsEvents.AUDIO_LEVEL, ssrc, audioLevel, isLocal);
         }
     }
 };

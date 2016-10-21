@@ -1,9 +1,16 @@
-/* global config, require, attachMediaStream, getUserMedia,
-   RTCPeerConnection, RTCSessionDescription, RTCIceCandidate, MediaStreamTrack,
-   mozRTCPeerConnection, mozRTCSessionDescription, mozRTCIceCandidate,
-   webkitRTCPeerConnection, webkitMediaStream, webkitURL
+/* global $,
+          attachMediaStream,
+          MediaStreamTrack,
+          RTCIceCandidate,
+          RTCPeerConnection,
+          RTCSessionDescription,
+          mozRTCIceCandidate,
+          mozRTCPeerConnection,
+          mozRTCSessionDescription,
+          webkitMediaStream,
+          webkitRTCPeerConnection,
+          webkitURL
 */
-/* jshint -W101 */
 
 var logger = require("jitsi-meet-logger").getLogger(__filename);
 var RTCBrowserType = require("./RTCBrowserType");
@@ -13,8 +20,7 @@ var AdapterJS = require("./adapter");
 var SDPUtil = require("../xmpp/SDPUtil");
 var EventEmitter = require("events");
 var screenObtainer = require("./ScreenObtainer");
-var JitsiTrackErrors = require("../../JitsiTrackErrors");
-var JitsiTrackError = require("../../JitsiTrackError");
+import JitsiTrackError from "../../JitsiTrackError";
 var MediaType = require("../../service/RTC/MediaType");
 var VideoType = require("../../service/RTC/VideoType");
 var CameraFacingMode = require("../../service/RTC/CameraFacingMode");
@@ -32,6 +38,8 @@ var devices = {
 // Currently audio output device change is supported only in Chrome and
 // default output always has 'default' device ID
 var audioOutputDeviceId = 'default'; // default device
+// whether user has explicitly set a device to use
+var audioOutputChanged = false;
 // Disables Acoustic Echo Cancellation
 var disableAEC = false;
 // Disables Noise Suppression
@@ -580,6 +588,7 @@ function handleLocalStream(streams, resolution) {
         if (audioVideo) {
             var audioTracks = audioVideo.getAudioTracks();
             if (audioTracks.length) {
+                // eslint-disable-next-line new-cap
                 audioStream = new webkitMediaStream();
                 for (var i = 0; i < audioTracks.length; i++) {
                     audioStream.addTrack(audioTracks[i]);
@@ -588,6 +597,7 @@ function handleLocalStream(streams, resolution) {
 
             var videoTracks = audioVideo.getVideoTracks();
             if (videoTracks.length) {
+                // eslint-disable-next-line new-cap
                 videoStream = new webkitMediaStream();
                 for (var j = 0; j < videoTracks.length; j++) {
                     videoStream.addTrack(videoTracks[j]);
@@ -646,7 +656,9 @@ function wrapAttachMediaStream(origAttachMediaStream) {
         if (stream
                 && RTCUtils.isDeviceChangeAvailable('output')
                 && stream.getAudioTracks
-                && stream.getAudioTracks().length) {
+                && stream.getAudioTracks().length
+                // we skip setting audio output if there was no explicit change
+                && audioOutputChanged) {
             element.setSinkId(RTCUtils.getAudioOutputDevice())
                 .catch(function (ex) {
                     var err = new JitsiTrackError(ex, null, ['audiooutput']);
@@ -662,7 +674,7 @@ function wrapAttachMediaStream(origAttachMediaStream) {
         }
 
         return res;
-    }
+    };
 }
 
 /**
@@ -769,8 +781,10 @@ var RTCUtils = {
                     }
                     return SDPUtil.filter_special_chars(id);
                 };
+                /* eslint-disable no-native-reassign */
                 RTCSessionDescription = mozRTCSessionDescription;
                 RTCIceCandidate = mozRTCIceCandidate;
+                /* eslint-enable no-native-reassign */
             } else if (RTCBrowserType.isChrome() ||
                     RTCBrowserType.isOpera() ||
                     RTCBrowserType.isNWJS() ||
@@ -834,7 +848,7 @@ var RTCUtils = {
                 //AdapterJS.WebRTCPlugin.setLogLevel(
                 //    AdapterJS.WebRTCPlugin.PLUGIN_LOG_LEVELS.VERBOSE);
                 var self = this;
-                AdapterJS.webRTCReady(function (isPlugin) {
+                AdapterJS.webRTCReady(function () {
 
                     self.peerconnection = RTCPeerConnection;
                     self.getUserMedia = window.getUserMedia;
@@ -867,22 +881,20 @@ var RTCUtils = {
                         return SDPUtil.filter_special_chars(stream.label);
                     };
 
-                    onReady(options, self.getUserMediaWithConstraints);
+                    onReady(options,
+                        self.getUserMediaWithConstraints.bind(self));
                     resolve();
                 });
             } else {
                 var errmsg = 'Browser does not appear to be WebRTC-capable';
-                try {
-                    logger.error(errmsg);
-                } catch (e) {
-                }
+                logger.error(errmsg);
                 reject(new Error(errmsg));
                 return;
             }
 
             // Call onReady() if Temasys plugin is not used
             if (!RTCBrowserType.isTemasysPluginUsed()) {
-                onReady(options, this.getUserMediaWithConstraints);
+                onReady(options, this.getUserMediaWithConstraints.bind(this));
                 resolve();
             }
         }.bind(this));
@@ -901,7 +913,6 @@ var RTCUtils = {
     **/
     getUserMediaWithConstraints: function ( um, success_callback, failure_callback, options) {
         options = options || {};
-        var resolution = options.resolution;
         var constraints = getConstraints(um, options);
 
         logger.info("Get media constraints", constraints);
@@ -1042,7 +1053,7 @@ var RTCUtils = {
                                 // set to not ask for permissions)
                                 self.getUserMediaWithConstraints(
                                     devices,
-                                    function (stream) {
+                                    function () {
                                         // we already failed to obtain this
                                         // media, so we are not supposed in any
                                         // way to receive success for this call
@@ -1224,6 +1235,7 @@ var RTCUtils = {
         return featureDetectionAudioEl.setSinkId(deviceId)
             .then(function() {
                 audioOutputDeviceId = deviceId;
+                audioOutputChanged = true;
 
                 logger.log('Audio output device set to ' + deviceId);
 

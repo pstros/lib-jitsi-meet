@@ -1,9 +1,9 @@
-/* jshint -W117 */
+/* global $, $iq */
 
-var logger = require("jitsi-meet-logger").getLogger(__filename);
+import {getLogger} from "jitsi-meet-logger";
+const logger = getLogger(__filename);
 var JingleSession = require("./JingleSession");
 var TraceablePeerConnection = require("./TraceablePeerConnection");
-var MediaType = require("../../service/RTC/MediaType");
 var SDPDiffer = require("./SDPDiffer");
 var SDPUtil = require("./SDPUtil");
 var SDP = require("./SDP");
@@ -59,6 +59,12 @@ function JingleSessionPC(me, sid, peerjid, connection,
     this.jingleOfferIq = null;
     this.webrtcIceUdpDisable = !!this.service.options.webrtcIceUdpDisable;
     this.webrtcIceTcpDisable = !!this.service.options.webrtcIceTcpDisable;
+    /**
+     * Flag used to enforce ICE failure through the URL parameter for
+     * the automatic testing purpose.
+     * @type {boolean}
+     */
+    this.failICE = !!this.service.options.failICE;
 
     this.modifySourcesQueue = async.queue(this._modifySources.bind(this), 1);
 }
@@ -113,20 +119,19 @@ JingleSessionPC.prototype.doInitialize = function () {
     this.peerconnection.onremovestream = function (event) {
         self.remoteStreamRemoved(event.stream);
     };
-    this.peerconnection.onsignalingstatechange = function (event) {
+    this.peerconnection.onsignalingstatechange = function () {
         if (!(self && self.peerconnection)) return;
         if (self.peerconnection.signalingState === 'stable') {
             self.wasstable = true;
         }
     };
     /**
-     * The oniceconnectionstatechange event handler contains the code to execute when the iceconnectionstatechange event,
-     * of type Event, is received by this RTCPeerConnection. Such an event is sent when the value of
+     * The oniceconnectionstatechange event handler contains the code to execute
+     * when the iceconnectionstatechange event, of type Event, is received by
+     * this RTCPeerConnection. Such an event is sent when the value of
      * RTCPeerConnection.iceConnectionState changes.
-     *
-     * @param event the event containing information about the change
      */
-    this.peerconnection.oniceconnectionstatechange = function (event) {
+    this.peerconnection.oniceconnectionstatechange = function () {
         if (!(self && self.peerconnection)) return;
         var now = window.performance.now();
         self.room.connectionTimes["ice.state." +
@@ -134,7 +139,7 @@ JingleSessionPC.prototype.doInitialize = function () {
         logger.log("(TIME) ICE " + self.peerconnection.iceConnectionState +
                     ":\t", now);
         Statistics.analytics.sendEvent(
-            'ice.' + self.peerconnection.iceConnectionState, now);
+            'ice.' + self.peerconnection.iceConnectionState, {value: now});
         switch (self.peerconnection.iceConnectionState) {
             case 'connected':
 
@@ -158,7 +163,7 @@ JingleSessionPC.prototype.doInitialize = function () {
                 break;
         }
     };
-    this.peerconnection.onnegotiationneeded = function (event) {
+    this.peerconnection.onnegotiationneeded = function () {
         self.room.eventEmitter.emit(XMPPEvents.PEERCONNECTION_READY, self);
     };
 };
@@ -213,7 +218,12 @@ JingleSessionPC.prototype.sendIceCandidates = function (candidates) {
                 name: (cands[0].sdpMid? cands[0].sdpMid : mline.media)
             }).c('transport', ice);
             for (var i = 0; i < cands.length; i++) {
-                cand.c('candidate', SDPUtil.candidateToJingle(cands[i].candidate)).up();
+                var candidate = SDPUtil.candidateToJingle(cands[i].candidate);
+                // Mangle ICE candidate if 'failICE' test option is enabled
+                if (this.service.options.failICE) {
+                    candidate.ip = "1.1.1.1";
+                }
+                cand.c('candidate', candidate).up();
             }
             // add fingerprint
             var fingerprint_line = SDPUtil.find_line(this.localSDP.media[mid], 'a=fingerprint:', this.localSDP.session);
@@ -244,8 +254,6 @@ JingleSessionPC.prototype.sendIceCandidates = function (candidates) {
 JingleSessionPC.prototype.readSsrcInfo = function (contents) {
     var self = this;
     $(contents).each(function (idx, content) {
-        var name = $(content).attr('name');
-        var mediaType = this.getAttribute('name');
         var ssrcs = $(content).find('description>source[xmlns="urn:xmpp:jingle:apps:rtp:ssma:0"]');
         ssrcs.each(function () {
             var ssrc = this.getAttribute('ssrc');
@@ -426,6 +434,9 @@ JingleSessionPC.prototype.sendSessionAccept = function (localSDP,
     if (this.webrtcIceUdpDisable) {
         localSDP.removeUdpCandidates = true;
     }
+    if (this.failICE) {
+        localSDP.failICE = true;
+    }
     localSDP.toJingle(
         accept,
         this.initiator == this.me ? 'initiator' : 'responder',
@@ -578,7 +589,7 @@ JingleSessionPC.prototype.addSource = function (elem) {
     // FIXME: dirty waiting
     if (!this.peerconnection.localDescription)
     {
-        logger.warn("addSource - localDescription not ready yet")
+        logger.warn("addSource - localDescription not ready yet");
         setTimeout(function()
             {
                 self.addSource(elem);
@@ -758,6 +769,9 @@ JingleSessionPC.prototype._modifySources = function (successCallback, queueCallb
         if (this.webrtcIceUdpDisable) {
             sdp.removeUdpCandidates = true;
         }
+        if (this.failICE) {
+            sdp.failICE = true;
+        }
 
         sdp.fromJingle(this.jingleOfferIq);
         this.readSsrcInfo($(this.jingleOfferIq).find(">content"));
@@ -787,6 +801,7 @@ JingleSessionPC.prototype._modifySources = function (successCallback, queueCallb
     this.removessrc = [];
 
     sdp.raw = sdp.session + sdp.media.join('');
+
     /**
      * Implements a failure callback which reports an error message and an
      * optional error through (1) logger, (2) GlobalOnErrorHandler, and (3)
@@ -805,7 +820,7 @@ JingleSessionPC.prototype._modifySources = function (successCallback, queueCallb
         }
         GlobalOnErrorHandler.callErrorHandler(new Error(errmsg));
         queueCallback(err);
-    };
+    }
 
     var ufrag = getUfrag(sdp.raw);
     if (ufrag != self.remoteUfrag) {
@@ -915,7 +930,7 @@ JingleSessionPC.prototype.addStream = function (stream, callback, errorCallback,
             errorCallback(error);
         }
     });
-}
+};
 
 /**
  * Generate ssrc info object for a stream with the following properties:
@@ -1019,7 +1034,7 @@ JingleSessionPC.prototype.removeStream = function (stream, callback, errorCallba
             errorCallback(error);
         }
     });
-}
+};
 
 /**
  * Figures out added/removed ssrcs and send update IQs.
@@ -1484,7 +1499,7 @@ function getUfrag(sdp) {
     var ufragLines = sdp.split('\n').filter(function(line) {
         return line.startsWith("a=ice-ufrag:");});
     if (ufragLines.length > 0) {
-        return ufragLines[0].substr("a=ice-ufrag:".length)
+        return ufragLines[0].substr("a=ice-ufrag:".length);
     }
 }
 
