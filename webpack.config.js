@@ -37,7 +37,7 @@ module.exports = {
             // Transpile ES2015 (aka ES6) to ES5.
 
             exclude: [
-                __dirname + '/modules/RTC/adapter.screenshare.js',
+                __dirname + '/modules/RTC/adapter.js',
                 __dirname + '/node_modules/'
             ],
             loader: 'babel',
