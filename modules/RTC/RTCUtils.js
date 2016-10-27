@@ -30,7 +30,7 @@ var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
 // React Native, for example.
 const AdapterJS
     = RTCBrowserType.isTemasysPluginUsed()
-        ? require("./adapter.screenshare")
+        ? require("./adapter")
         : undefined;
 
 var eventEmitter = new EventEmitter();

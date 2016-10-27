@@ -117,7 +117,7 @@ var ScreenObtainer = {
         } else if (RTCBrowserType.isTemasysPluginUsed()) {
             // XXX Don't require Temasys unless it's to be used because it
             // doesn't run on React Native, for example.
-            const AdapterJS = require("./adapter.screenshare");
+            const AdapterJS = require("./adapter");
 
             if (!AdapterJS.WebRTCPlugin.plugin.HasScreensharingFeature) {
                 logger.info("Screensharing not supported by this plugin " +
