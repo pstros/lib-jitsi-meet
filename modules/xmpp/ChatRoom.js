@@ -352,8 +352,8 @@ ChatRoom.prototype.onPresence = function (pres) {
     // for the rest info we got in presence
     for(let i = 0; i < nodes.length; i++)
     {
-        const node = nodes[i];
-        switch(node.tagName)
+        //const node = nodes[i];
+        switch(nodes[i].tagName)
         {
             case "nick":
                 if(!member.isFocus) {
