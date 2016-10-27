@@ -26,6 +26,13 @@ var VideoType = require("../../service/RTC/VideoType");
 var CameraFacingMode = require("../../service/RTC/CameraFacingMode");
 var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
 
+// XXX Don't require Temasys unless it's to be used because it doesn't run on
+// React Native, for example.
+const AdapterJS
+    = RTCBrowserType.isTemasysPluginUsed()
+        ? require("./adapter.screenshare")
+        : undefined;
+
 var eventEmitter = new EventEmitter();
 
 var AVAILABLE_DEVICES_POLL_INTERVAL_TIME = 3000; // ms

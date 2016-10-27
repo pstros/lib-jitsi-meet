@@ -18,8 +18,8 @@ var GlobalOnErrorHandler = require("./modules/util/GlobalOnErrorHandler");
 var JitsiConferenceEventManager = require("./JitsiConferenceEventManager");
 var VideoType = require('./service/RTC/VideoType');
 var Transcriber = require("./modules/transcription/transcriber");
-var ParticipantConnectionStatus
-    = require("./modules/connectivity/ParticipantConnectionStatus");
+import ParticipantConnectionStatus
+    from "./modules/connectivity/ParticipantConnectionStatus";
 import TalkMutedDetection from "./modules/TalkMutedDetection";
 
 /**
@@ -562,10 +562,11 @@ JitsiConference.prototype.getRole = function () {
 
 /**
  * Check if local user is moderator.
- * @returns {boolean} true if local user is moderator, false otherwise.
+ * @returns {boolean|null} true if local user is moderator, false otherwise. If
+ * we're no longer in the conference room then <tt>null</tt> is returned.
  */
 JitsiConference.prototype.isModerator = function () {
-    return this.room.isModerator();
+    return this.room ? this.room.isModerator() : null;
 };
 
 /**
@@ -796,6 +797,17 @@ function (jingleSession, jingleOffer, now) {
                 + jingleSession.peerjid;
         GlobalOnErrorHandler.callErrorHandler(new Error(errmsg));
         logger.error(errmsg);
+
+        // Terminate  the jingle session with a reason
+        jingleSession.terminate(
+            'security-error', 'Only focus can start new sessions',
+            null /* success callback => we don't care */,
+            function (error) {
+                logger.warn(
+                    "An error occurred while trying to terminate"
+                        + " invalid Jingle session", error);
+            });
+
         return;
     }
 
@@ -1298,10 +1310,12 @@ JitsiConference.prototype.sendApplicationLog = function(message) {
  * Checks if the user identified by given <tt>mucJid</tt> is the conference
  * focus.
  * @param mucJid the full MUC address of the user to be checked.
- * @returns {boolean} <tt>true</tt> if MUC user is the conference focus.
+ * @returns {boolean|null} <tt>true</tt> if MUC user is the conference focus,
+ * <tt>false</tt> when is not. <tt>null</tt> if we're not in the MUC anymore and
+ * are unable to figure out the status or if given <tt>mucJid</tt> is invalid.
  */
 JitsiConference.prototype._isFocus = function (mucJid) {
-    return this.room.isFocus(mucJid);
+    return this.room ? this.room.isFocus(mucJid) : null;
 };
 
 /**

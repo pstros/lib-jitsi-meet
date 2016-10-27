@@ -413,12 +413,11 @@ function(overallFeedback, detailedFeedback) {
         return;
     }
 
-    var feedbackString =    '{"userID":"' + this.userID + '"' +
-                            ', "overall":' + overallFeedback +
-                            ', "comment": "' + detailedFeedback + '"}';
-    var feedbackJSON = JSON.parse(feedbackString);
-
-    callStats.sendUserFeedback(this.confID, feedbackJSON);
+    callStats.sendUserFeedback(this.confID, {
+        userID: this.userID,
+        overall: overallFeedback,
+        comment: detailedFeedback
+    });
 });
 
 /**
