@@ -416,7 +416,7 @@ JitsiConference.prototype.addTrack = function (track) {
         track.ssrcHandler);
 
     if(track.isAudioTrack() || (track.isVideoTrack() &&
-        track.videoType !== VideoType.DESKTOP)) {
+        track.videoType !== "desktop")) {
         // Report active device to statistics
         var devices = RTC.getCurrentlyAvailableMediaDevices();
         var device = devices.find(function (d) {
@@ -463,7 +463,7 @@ JitsiConference.prototype.addTrack = function (track) {
             // send event for starting screen sharing
             // FIXME: we assume we have only one screen sharing track
             // if we change this we need to fix this check
-            if (track.isVideoTrack() && track.videoType === VideoType.DESKTOP)
+            if (track.isVideoTrack() && track.videoType === 'desktop')
                 this.statistics.sendScreenSharingEvent(true);
 
             this.eventEmitter.emit(JitsiConferenceEvents.TRACK_ADDED, track);
@@ -516,7 +516,7 @@ JitsiConference.prototype.onTrackRemoved = function (track) {
     // send event for stopping screen sharing
     // FIXME: we assume we have only one screen sharing track
     // if we change this we need to fix this check
-    if (track.isVideoTrack() && track.videoType === VideoType.DESKTOP)
+    if (track.isVideoTrack() && track.videoType === "desktop")
         this.statistics.sendScreenSharingEvent(false);
 
     this.eventEmitter.emit(JitsiConferenceEvents.TRACK_REMOVED, track);
