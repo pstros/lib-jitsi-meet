@@ -373,10 +373,10 @@ ChatRoom.prototype.onPresence = function (pres) {
                 }
                 break;
             case "jibri-recording-status":
-                jibri = node;
+                jibri = nodes[i];
                 break;
             case "call-control":
-                var att = node.attributes;
+                var att = nodes[i].attributes;
                 if(!att)
                     break;
                 this.phoneNumber = att.phone || null;
@@ -384,7 +384,7 @@ ChatRoom.prototype.onPresence = function (pres) {
                 this.eventEmitter.emit(XMPPEvents.PHONE_NUMBER_CHANGED);
                 break;
             default:
-                this.processNode(node, from);
+                this.processNode(nodes[i], from);
         }
     }
 
