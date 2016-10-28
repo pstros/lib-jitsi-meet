@@ -528,6 +528,7 @@ TraceablePeerConnection.prototype.setLocalDescription
             successCallback();
         },
         function (err) {
+            console.log("ERROR SETTING LOCAL DESCRIPTION: ", err);
             self.trace('setLocalDescriptionOnFailure', err);
             self.eventEmitter.emit(XMPPEvents.SET_LOCAL_DESCRIPTION_FAILED,
                 err, self.peerconnection);
