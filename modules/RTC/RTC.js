@@ -347,11 +347,8 @@ RTC.prototype.removeRemoteTrack = function (resource, mediaType) {
 
     if (remoteTracksForResource && remoteTracksForResource[mediaType]) {
         var track = remoteTracksForResource[mediaType];
-        if (track.type && track.type == "video" && track.videoType == "desktop" && RTCBrowserType.isTemasysPluginUsed()) {
-        } else {
-            track.dispose();
-            delete remoteTracksForResource[mediaType];
-        }
+        track.dispose();
+        delete remoteTracksForResource[mediaType];
         return track;
     }
 };
