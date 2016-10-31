@@ -4,6 +4,7 @@ var logger = require("jitsi-meet-logger").getLogger(__filename);
 var EventEmitter = require("events");
 var RTCEvents = require("../../service/RTC/RTCEvents.js");
 var RTCUtils = require("./RTCUtils.js");
+var RTCBrowserType = require("./RTCBrowserType");
 var JitsiLocalTrack = require("./JitsiLocalTrack.js");
 import JitsiTrackError from "../../JitsiTrackError";
 import * as JitsiTrackErrors from "../../JitsiTrackErrors";
@@ -346,8 +347,11 @@ RTC.prototype.removeRemoteTrack = function (resource, mediaType) {
 
     if (remoteTracksForResource && remoteTracksForResource[mediaType]) {
         var track = remoteTracksForResource[mediaType];
-        track.dispose();
-        delete remoteTracksForResource[mediaType];
+        if (track.type && track.type == "video" && track.videoType == "desktop" && RTCBrowserType.isTemasysPluginUsed()) {
+        } else {
+            track.dispose();
+            delete remoteTracksForResource[mediaType];
+        }
         return track;
     }
 };
