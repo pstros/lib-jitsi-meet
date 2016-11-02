@@ -379,18 +379,6 @@ CallStats.prototype.sendTerminateEvent = _try_catch(function () {
 });
 
 /**
- * Notifies CallStats that audio problems are detected.
- *
- * @param {Error} e error to send
- * @param {CallStats} cs callstats instance related to the error (optional)
- */
-CallStats.prototype.sendDetectedAudioProblem = _try_catch(function (e) {
-    CallStats._reportError.call(this, wrtcFuncNames.applicationLog, e,
-        this.peerconnection);
-});
-
-
-/**
  * Notifies CallStats for ice connection failed
  * @param {RTCPeerConnection} pc connection on which failure occured.
  * @param {CallStats} cs callstats instance related to the error (optional)
@@ -413,12 +401,11 @@ function(overallFeedback, detailedFeedback) {
         return;
     }
 
-    var feedbackString =    '{"userID":"' + this.userID + '"' +
-                            ', "overall":' + overallFeedback +
-                            ', "comment": "' + detailedFeedback + '"}';
-    var feedbackJSON = JSON.parse(feedbackString);
-
-    callStats.sendUserFeedback(this.confID, feedbackJSON);
+    callStats.sendUserFeedback(this.confID, {
+        userID: this.userID,
+        overall: overallFeedback,
+        comment: detailedFeedback
+    });
 });
 
 /**

@@ -190,14 +190,6 @@ Statistics.prototype.removeAudioLevelListener = function(listener) {
     this.eventEmitter.removeListener(StatisticsEvents.AUDIO_LEVEL, listener);
 };
 
-/**
- * Adds listener for detected audio problems.
- * @param listener the listener.
- */
-Statistics.prototype.addAudioProblemListener = function (listener) {
-    this.eventEmitter.on(StatisticsEvents.AUDIO_NOT_WORKING, listener);
-};
-
 Statistics.prototype.addConnectionStatsListener = function (listener) {
     this.eventEmitter.on(StatisticsEvents.CONNECTION_STATS, listener);
 };
@@ -446,16 +438,6 @@ Statistics.prototype.sendAddIceCandidateFailed = function (e, pc) {
 };
 
 /**
- * Notifies CallStats that audio problems are detected.
- *
- * @param {Error} e error to send
- */
-Statistics.prototype.sendDetectedAudioProblem = function (e) {
-    if(this.callstats)
-        this.callstats.sendDetectedAudioProblem(e);
-};
-
-/**
  * Adds to CallStats an application log.
  *
  * @param {String} a log message to send or an {Error} object to be reported
@@ -505,7 +487,7 @@ Statistics.reportGlobalError = function (error) {
  */
 Statistics.sendEventToAll = function (eventName, data) {
     this.analytics.sendEvent(eventName, data);
-    Statistics.sendLog({name: eventName, data});
+    Statistics.sendLog(JSON.stringify({name: eventName, data}));
 };
 
 module.exports = Statistics;
