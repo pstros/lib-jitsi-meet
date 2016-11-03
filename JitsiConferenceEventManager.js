@@ -99,19 +99,22 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
         JitsiConferenceEvents.CONFERENCE_JOINED);
     // send some analytics events
     chatRoom.addListener(XMPPEvents.MUC_JOINED,
-        function ()
-        {
-            for (var ckey in chatRoom.connectionTimes){
-                var cvalue = chatRoom.connectionTimes[ckey];
-                Statistics.analytics.sendEvent('conference.' + ckey,
-                    {value: cvalue});
+        () => {
+            let key, value;
+
+            this.conference.connectionIsInterrupted = false;
+
+            for (key in chatRoom.connectionTimes){
+                value = chatRoom.connectionTimes[key];
+                Statistics.analytics.sendEvent('conference.' + key,
+                    {value: value});
             }
-            for (var xkey in chatRoom.xmpp.connectionTimes){
-                var xvalue = chatRoom.xmpp.connectionTimes[xkey];
-                Statistics.analytics.sendEvent('xmpp.' + xkey,
-                    {value: xvalue});
+            for (key in chatRoom.xmpp.connectionTimes){
+                value = chatRoom.xmpp.connectionTimes[key];
+                Statistics.analytics.sendEvent('xmpp.' + key,
+                    {value: value});
             }
-        });
+    });
 
     this.chatRoomForwarder.forward(XMPPEvents.ROOM_JOIN_ERROR,
         JitsiConferenceEvents.CONFERENCE_FAILED,
@@ -195,8 +198,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
     this.chatRoomForwarder.forward(XMPPEvents.CONNECTION_INTERRUPTED,
         JitsiConferenceEvents.CONNECTION_INTERRUPTED);
     chatRoom.addListener(XMPPEvents.CONNECTION_INTERRUPTED,
-        function () {
+        () => {
             Statistics.sendEventToAll('connection.interrupted');
+            this.conference.connectionIsInterrupted = true;
         });
 
     this.chatRoomForwarder.forward(XMPPEvents.RECORDER_STATE_CHANGED,
@@ -208,8 +212,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
     this.chatRoomForwarder.forward(XMPPEvents.CONNECTION_RESTORED,
         JitsiConferenceEvents.CONNECTION_RESTORED);
     chatRoom.addListener(XMPPEvents.CONNECTION_RESTORED,
-        function () {
+        () => {
             Statistics.sendEventToAll('connection.restored');
+            this.conference.connectionIsInterrupted = false;
         });
 
     this.chatRoomForwarder.forward(XMPPEvents.CONFERENCE_SETUP_FAILED,
@@ -481,9 +486,16 @@ JitsiConferenceEventManager.prototype.setupRTCListeners = function () {
 
     conference.rtc.addListener(RTCEvents.ENDPOINT_MESSAGE_RECEIVED,
         function (from, payload) {
-            conference.eventEmitter.emit(
-                JitsiConferenceEvents.ENDPOINT_MESSAGE_RECEIVED,
-                conference.getParticipantById(from), payload);
+            const participant = conference.getParticipantById(from);
+            if (participant) {
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.ENDPOINT_MESSAGE_RECEIVED,
+                    participant, payload);
+            } else {
+                logger.warn(
+                    "Ignored ENDPOINT_MESSAGE_RECEIVED " +
+                    "for not existing participant: " + from, payload);
+            }
         });
 };
 
@@ -565,10 +577,6 @@ JitsiConferenceEventManager.prototype.setupStatisticsListeners = function () {
 
         conference.eventEmitter.emit(
             JitsiConferenceEvents.CONNECTION_STATS, stats);
-    });
-
-    conference.statistics.addAudioProblemListener(function (ssrc) {
-        conference._reportAudioProblem(ssrc);
     });
 
     conference.statistics.addByteSentStatsListener(function (stats) {
