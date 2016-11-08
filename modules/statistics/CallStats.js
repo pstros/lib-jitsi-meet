@@ -154,11 +154,7 @@ var CallStats = _try_catch(function(jingleSession, Settings, options) {
             userName: Settings.getCallStatsUserName()
         };
 
-        //Original confID
-        //this.confID = this.session.room.roomjid;
-        const location = window.location;
-        // The confID is case sensitive!!!
-        this.confID = location.hostname + "/" + options.roomName;
+        this.confID = options.callStatsConfIDNamespace + "/" + options.roomName;
 
         this.callStatsID = options.callStatsID;
         this.callStatsSecret = options.callStatsSecret;
