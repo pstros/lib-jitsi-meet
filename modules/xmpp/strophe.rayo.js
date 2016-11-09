@@ -22,7 +22,7 @@ class RayoConnectionPlugin extends ConnectionPlugin {
         logger.info("Rayo IQ", iq);
     }
 
-    dial (to, from, roomName, roomPass, focusMucJid) {
+    dial (to, from, roomName, roomPass, focusMucJid, nickName) {
         return new Promise((resolve, reject) => {
             if(!focusMucJid) {
                 reject(new Error("Internal error!"));
@@ -46,6 +46,12 @@ class RayoConnectionPlugin extends ConnectionPlugin {
                 req.c('header', {
                     name: 'JvbRoomPassword',
                     value: roomPass
+                }).up();
+            }
+            if (nickName && nickName.length) {
+                req.c('header', {
+                    name: 'Nickname',
+                    value: nickName
                 }).up();
             }
 
