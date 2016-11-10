@@ -62,7 +62,7 @@ class RayoConnectionPlugin extends ConnectionPlugin {
                 this.call_resource =
                     resource.substr('xmpp:'.length);
                 logger.info("Received call resource: " + this.call_resource);
-                resolve();
+                resolve(this.call_resource);
             }, (error) => {
                 logger.info('Dial error ', error);
                 reject(error);
