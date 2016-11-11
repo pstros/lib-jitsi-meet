@@ -95,7 +95,7 @@ class RayoConnectionPlugin extends ConnectionPlugin {
                 this.call_resource = null;
                 reject(new Error('Hangup error '));
             });
-        });
+        }.bind(this));
     }
 }
 
