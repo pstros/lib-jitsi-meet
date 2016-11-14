@@ -46,6 +46,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
     chatRoom.addListener(XMPPEvents.REMOTE_TRACK_ADDED,
         function (data) {
             var track = conference.rtc.createRemoteTrack(data);
+            console.log("REMOTE DATA BEING ADDED", data);
             if (track) {
                 conference.onTrackAdded(track);
             }
