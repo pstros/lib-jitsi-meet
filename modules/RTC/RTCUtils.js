@@ -866,12 +866,13 @@ var RTCUtils = {
                             if (RTCBrowserType.isTemasysPluginUsed()
                                     && !containerSel.is(':visible')) {
                                 containerSel.show();
-                            }
-                            var video = !!stream.getVideoTracks().length;
-                            if (video && !$(element).is(':visible')) {
-                                throw new Error(
-                                    'video element must be visible to attach'
-                                        + ' video stream');
+                            } else {
+                                var video = !!stream.getVideoTracks().length;
+                                if (video && !$(element).is(':visible')) {
+                                    throw new Error(
+                                        'video element must be visible to attach'
+                                            + ' video stream');
+                                }
                             }
                         }
 
