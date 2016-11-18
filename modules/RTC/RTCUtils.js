@@ -871,7 +871,7 @@ var RTCUtils = {
                             }
                             var video = !!stream.getVideoTracks().length;
                             if (video && !$(element).is(':visible')) {
-                                throw new Error(
+                                console.error(
                                     'video element must be visible to attach'
                                         + ' video stream');
                             }
