@@ -1,4 +1,4 @@
-/*! adapterjs - v0.13.4 - 2016-11-18 */
+/*! adapterjs - v0.13.4 - 2016-12-05 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -60,20 +60,20 @@ AdapterJS.WebRTCPlugin = AdapterJS.WebRTCPlugin || {};
 // The object to store plugin information
 /* jshint ignore:start */
 AdapterJS.WebRTCPlugin.pluginInfo = {
-  prefix : 'WbMtg',
-  plugName : 'wmAudioVideoPlugin',
+  prefix : 'FxDn',
+  plugName : 'fdaudiovideoplugin',
   pluginId : 'plugin0',
-  type : 'application/x-wmaudiovideoplugin',
+  type : 'application/x-fdaudiovideoplugin',
   onload : '__TemWebRTCReady0',
-  portalLink : 'https://support.callinfo.com/web-meeting-center-g/',
+  portalLink : 'https://foxden.io',
   downloadLink : null, //set below
-  companyName: 'Web Meeting'
+  companyName: 'FoxDen'
 };
 if(!!navigator.platform.match(/^Mac/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/callinfo/wmAudioVideoPlugin.pkg';
+  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/foxden/fdAudioVideoPlugin.dmg';
 }
 else if(!!navigator.platform.match(/^Win/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/callinfo/wmAudioVideoPlugin.msi';
+  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/foxden/fdAudioVideoPlugin.msi';
 }
 
 /* jshint ignore:end */
