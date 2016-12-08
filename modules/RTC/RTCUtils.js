@@ -847,6 +847,15 @@ var RTCUtils = {
 
                 //AdapterJS.WebRTCPlugin.setLogLevel(
                 //    AdapterJS.WebRTCPlugin.PLUGIN_LOG_LEVELS.VERBOSE);
+
+                AdapterJS.WebRTCPlugin.isPluginInstalled(
+                  AdapterJS.WebRTCPlugin.pluginInfo.prefix,
+                  AdapterJS.WebRTCPlugin.pluginInfo.plugName,
+                  function temasysIsInstalled(){},
+                  function temasysNotInstalled() {
+                    reject(new Error("Temasys plugin is not installed"));
+                  });
+
                 var self = this;
                 AdapterJS.webRTCReady(function () {
 
