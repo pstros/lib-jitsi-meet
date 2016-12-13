@@ -642,8 +642,19 @@ JitsiConference.prototype.pinParticipant = function(participantId) {
 };
 
 /**
- * @return Array<JitsiParticipant> an array of all participants in this
- * conference.
+ * Elects the participan(s) to be the pinned participants in
+ * order to always receive video for this participant (even when last n is
+ * enabled).
+ * @param participantIdList (Array) a list of the participant ids
+ * @throws NetworkError or InvalidStateError or Error if the operation fails.
+ */
+JitsiConference.prototype.pinParticipants = function(participantIdList) {
+    this.rtc.pinEndpoints(participantIdList);
+};
+
+/**
+ * Returns the list of participants for this conference.
+ * @return Array<JitsiParticipant> a list of participant identifiers containing all conference participants.
  */
 JitsiConference.prototype.getParticipants = function() {
     return Object.keys(this.participants).map(function (key) {

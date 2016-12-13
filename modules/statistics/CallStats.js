@@ -155,7 +155,7 @@ var CallStats = _try_catch(function(jingleSession, options) {
 
         //Original confID
         //this.confID = this.session.room.roomjid;
-        const location = window.location;
+        // const location = window.location;
         // The confID is case sensitive!!!
         this.confID = options.callStatsConfIDNamespace + "/" + options.roomName;
 
