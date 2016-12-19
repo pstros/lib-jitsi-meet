@@ -62,7 +62,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function () {
                         var track = participant._tracks.splice(i, 1)[0];
 
                         conference.rtc.removeRemoteTrack(
-                            participant.getId(), track.getType());
+                            participant.getId(), track.getType(), trackId);
 
                         conference.eventEmitter.emit(
                             JitsiConferenceEvents.TRACK_REMOVED, track);
