@@ -247,7 +247,8 @@ var ScreenObtainer = {
                         chromeExtInstalled = true;
                         // We need to give a moment to the endpoint to become
                         // available.
-                        waitForExtensionAfterInstall(this.options, 200, 10)
+                        console.log("!!!Rt Here");
+                        waitForExtensionAfterInstall(this.options, 200, 20)
                             .then(() => {
                                 doGetStreamFromExtension(this.options,
                                     streamCallback, failCallback);
