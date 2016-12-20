@@ -2652,6 +2652,7 @@ if ( (navigator.mozGetUserMedia ||
       try {
         var axo = new ActiveXObject(comName + '.' + plugName);
       } catch (e) {
+        console.log("!!!Unable to find plugin");
         notInstalledCb(e);
         return;
       }
