@@ -2652,7 +2652,7 @@ if ( (navigator.mozGetUserMedia ||
       try {
         var axo = new ActiveXObject(comName + '.' + plugName);
       } catch (e) {
-        notInstalledCb();
+        notInstalledCb(e);
         return;
       }
       installedCb();
