@@ -16,7 +16,6 @@ var logger = require("jitsi-meet-logger").getLogger(__filename);
 var RTCBrowserType = require("./RTCBrowserType");
 var Resolutions = require("../../service/RTC/Resolutions");
 var RTCEvents = require("../../service/RTC/RTCEvents");
-var AdapterJS = require("./adapter");
 var SDPUtil = require("../xmpp/SDPUtil");
 var EventEmitter = require("events");
 var screenObtainer = require("./ScreenObtainer");
@@ -25,6 +24,13 @@ var MediaType = require("../../service/RTC/MediaType");
 var VideoType = require("../../service/RTC/VideoType");
 var CameraFacingMode = require("../../service/RTC/CameraFacingMode");
 var GlobalOnErrorHandler = require("../util/GlobalOnErrorHandler");
+
+// XXX Don't require Temasys unless it's to be used because it doesn't run on
+// React Native, for example.
+const AdapterJS
+    = RTCBrowserType.isTemasysPluginUsed()
+        ? require("./adapter.screenshare")
+        : undefined;
 
 var eventEmitter = new EventEmitter();
 
@@ -234,7 +240,6 @@ function getConstraints(um, options) {
             constraints.video = {
                 mandatory: {
                     chromeMediaSource: "screen",
-                    googLeakyBucket: true,
                     maxWidth: window.screen.width,
                     maxHeight: window.screen.height,
                     maxFrameRate: 3
@@ -268,7 +273,6 @@ function getConstraints(um, options) {
             mandatory: {
                 chromeMediaSource: "desktop",
                 chromeMediaSourceId: options.desktopStream,
-                googLeakyBucket: true,
                 maxWidth: window.screen.width,
                 maxHeight: window.screen.height,
                 maxFrameRate: 3
@@ -781,10 +785,8 @@ var RTCUtils = {
                     }
                     return SDPUtil.filter_special_chars(id);
                 };
-                /* eslint-disable no-native-reassign */
-                RTCSessionDescription = mozRTCSessionDescription;
-                RTCIceCandidate = mozRTCIceCandidate;
-                /* eslint-enable no-native-reassign */
+                RTCSessionDescription = mozRTCSessionDescription; // eslint-disable-line
+                RTCIceCandidate = mozRTCIceCandidate;             // eslint-disable-line
             } else if (RTCBrowserType.isChrome() ||
                     RTCBrowserType.isOpera() ||
                     RTCBrowserType.isNWJS() ||
@@ -820,17 +822,19 @@ var RTCUtils = {
                             ? id
                             : SDPUtil.filter_special_chars(id));
                 };
-                // DTLS should now be enabled by default but..
-                this.pc_constraints = {'optional': [
-                    {'DtlsSrtpKeyAgreement': 'true'}
-                ]};
+
+                this.pc_constraints = {optional: [] };
+
+                // Allows sending of video to be suspended if the bandwidth
+                // estimation is too low.
+                this.pc_constraints.optional.push(
+                    {googSuspendBelowMinBitrate: true});
+
                 if (options.useIPv6) {
                     // https://code.google.com/p/webrtc/issues/detail?id=2828
                     this.pc_constraints.optional.push({googIPv6: true});
                 }
-                if (RTCBrowserType.isAndroid()) {
-                    this.pc_constraints = {}; // disable DTLS on Android
-                }
+
                 if (!webkitMediaStream.prototype.getVideoTracks) {
                     webkitMediaStream.prototype.getVideoTracks = function () {
                         return this.videoTracks;
