@@ -1397,7 +1397,7 @@ if ( (navigator.mozGetUserMedia ||
           sdp += SDPUtils.writeFtmp(codec);
           sdp += SDPUtils.writeRtcpFb(codec);
         });
-        // FIXME: add headerExtensions, fecMechanismÅŸ and rtcp.
+        // FIXME: add headerExtensions, fecMechanismş and rtcp.
         sdp += 'a=rtcp-mux\r\n';
         return sdp;
       };
@@ -1633,7 +1633,7 @@ if ( (navigator.mozGetUserMedia ||
           event.candidate = {sdpMid: mid, sdpMLineIndex: sdpMLineIndex};
   
           var cand = evt.candidate;
-          // Edge emits an empty object for RTCIceCandidateCompleteâ€¥
+          // Edge emits an empty object for RTCIceCandidateComplete‥
           if (!cand || Object.keys(cand).length === 0) {
             // polyfill since RTCIceGatherer.state is not implemented in Edge 10547 yet.
             if (iceGatherer.state === undefined) {
@@ -2652,7 +2652,6 @@ if ( (navigator.mozGetUserMedia ||
       try {
         var axo = new ActiveXObject(comName + '.' + plugName);
       } catch (e) {
-        console.log("!!!Unable to find plugin");
         notInstalledCb(e);
         return;
       }

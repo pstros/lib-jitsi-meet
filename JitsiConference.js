@@ -32,7 +32,6 @@ import ConnectionQuality from "./modules/connectivity/ConnectionQuality";
  * @constructor
  */
 function JitsiConference(options) {
-    console.log("!!! BRANCH BERTTEST START");
     if(!options.name || options.name.toLowerCase() !== options.name) {
         var errmsg
             = "Invalid conference name (no conference name passed or it "
