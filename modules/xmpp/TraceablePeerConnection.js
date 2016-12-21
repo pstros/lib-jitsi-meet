@@ -41,7 +41,7 @@ function TraceablePeerConnection(ice_config, constraints, session) {
 
     // override as desired
     this.trace = function (what, info) {
-        logger.warn('WTRACE', what, info);
+        /*logger.warn('WTRACE', what, info);
         if (info && RTCBrowserType.isIExplorer()) {
             if (info.length > 1024) {
                 logger.warn('WTRACE', what, info.substr(1024));
@@ -49,7 +49,7 @@ function TraceablePeerConnection(ice_config, constraints, session) {
             if (info.length > 2048) {
                 logger.warn('WTRACE', what, info.substr(2048));
             }
-        }
+        }*/
         self.updateLog.push({
             time: new Date(),
             type: what,
