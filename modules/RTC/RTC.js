@@ -358,10 +358,10 @@ RTC.prototype.removeRemoteTracks = function (resource) {
  * @param {string} mediaType - Type of track to remove.
  * @returns {JitsiRemoteTrack|undefined}
  */
-RTC.prototype.removeRemoteTrack = function (resource, mediaType) {
+RTC.prototype.removeRemoteTrack = function (resource, mediaType, trackId) {
     var remoteTracksForResource = this.remoteTracks[resource];
 
-    if (remoteTracksForResource && remoteTracksForResource[mediaType]) {
+    if (remoteTracksForResource && remoteTracksForResource[mediaType] && remoteTracksForResource[mediaType].getTrackId() == trackId) {
         var track = remoteTracksForResource[mediaType];
         track.dispose();
         delete remoteTracksForResource[mediaType];
