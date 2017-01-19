@@ -59,7 +59,7 @@ AdapterJS.WebRTCPlugin = AdapterJS.WebRTCPlugin || {};
 
 // The object to store plugin information
 /* jshint ignore:start */
-AdapterJS.WebRTCPlugin.pluginInfo = {
+AdapterJS.WebRTCPlugin.pluginInfo = AdapterJS.WebRTCPlugin.pluginInfo || {
   prefix : 'FxDn',
   plugName : 'fdaudiovideoplugin',
   pluginId : 'plugin0',
