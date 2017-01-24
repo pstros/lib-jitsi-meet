@@ -69,11 +69,14 @@ AdapterJS.WebRTCPlugin.pluginInfo = AdapterJS.WebRTCPlugin.pluginInfo || {
   downloadLink : null, //set below
   companyName: 'FoxDen'
 };
-if(!!navigator.platform.match(/^Mac/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/foxden/fdAudioVideoPlugin.dmg';
-}
-else if(!!navigator.platform.match(/^Win/i)) {
-  AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/foxden/fdAudioVideoPlugin.msi';
+
+if(typeof AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks !== "undefined" && AdapterJS.WebRTCPlugin.pluginInfo.downloadLinks !== null) {
+  if(!!navigator.platform.match(/^Mac/i)) {
+    AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/foxden/fdaudiovideoplugin.pkg';
+  }
+  else if(!!navigator.platform.match(/^Win/i)) {
+    AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'https://core.callinfo.com/packages/AudioVideoPlugin/foxden/fdaudiovideoplugin.msi';
+  }
 }
 
 /* jshint ignore:end */
