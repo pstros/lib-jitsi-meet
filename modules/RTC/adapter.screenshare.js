@@ -2642,22 +2642,29 @@ if ( (navigator.mozGetUserMedia ||
 
   AdapterJS.WebRTCPlugin.isPluginInstalled =
     function (comName, plugName, plugType, installedCb, notInstalledCb) {
+    console.log('!!! Checking if plugin in installed');
     if (!isIE) {
+      console.log('!!! This is not ie, no reason to check');
       var pluginArray = navigator.mimeTypes;
       for (var i = 0; i < pluginArray.length; i++) {
         if (pluginArray[i].type.indexOf(plugType) >= 0) {
+          console.log('!!! Calling installed cb');
           installedCb();
           return;
         }
       }
+      console.log('!!! Calling not installed cb');
       notInstalledCb();
     } else {
       try {
+        console.log('!!! Creating new activex object');
         var axo = new ActiveXObject(comName + '.' + plugName);
       } catch (e) {
+        console.log('!!! Activex creation failed! Calling not installed cb');
         notInstalledCb(e);
         return;
       }
+      console.log('!!! Activex created success, calling installed cb');
       installedCb();
     }
   };
