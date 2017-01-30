@@ -855,7 +855,7 @@ var RTCUtils = {
                 AdapterJS.WebRTCPlugin.isPluginInstalled(
                   AdapterJS.WebRTCPlugin.pluginInfo.prefix,
                   AdapterJS.WebRTCPlugin.pluginInfo.plugName,
-                  null,
+                  AdapterJS.WebRTCPlugin.pluginInfo.type,
                   function temasysIsInstalled(){},
                   function temasysNotInstalled(e) {
                     console.error(e.message);
