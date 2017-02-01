@@ -94,8 +94,8 @@ class Settings {
     }
 
     /**
-     * Returns fake username for callstats
-     * @returns {string} fake username for callstats
+     * Returns username for callstats
+     * @returns {string} username for callstats
      */
     getCallStatsUserName () {
         return this.callStatsUserName;
