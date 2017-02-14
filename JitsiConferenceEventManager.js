@@ -513,23 +513,27 @@ JitsiConferenceEventManager.prototype.setupXMPPListeners = function () {
 
     conference.xmpp.addListener(XMPPEvents.START_MUTED_FROM_FOCUS,
         function (audioMuted, videoMuted) {
-            conference.startAudioMuted = audioMuted;
-            conference.startVideoMuted = videoMuted;
+            if(!conference.options.config.ignoreStartMuted) {
+                conference.startAudioMuted = audioMuted;
+                conference.startVideoMuted = videoMuted;
 
-            // mute existing local tracks because this is initial mute from
-            // Jicofo
-            conference.getLocalTracks().forEach(function (track) {
-                switch (track.getType()) {
-                    case MediaType.AUDIO:
-                        conference.startAudioMuted && track.mute();
-                        break;
-                    case MediaType.VIDEO:
-                        conference.startVideoMuted && track.mute();
-                        break;
-                }
-            });
 
-            conference.eventEmitter.emit(JitsiConferenceEvents.STARTED_MUTED);
+                // mute existing local tracks because this is initial mute from
+                // Jicofo
+                conference.getLocalTracks().forEach(function (track) {
+                    switch (track.getType()) {
+                        case MediaType.AUDIO:
+                            conference.startAudioMuted && track.mute();
+                            break;
+                        case MediaType.VIDEO:
+                            conference.startVideoMuted && track.mute();
+                            break;
+                    }
+                });
+
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.STARTED_MUTED);
+            }
         });
 };
 
