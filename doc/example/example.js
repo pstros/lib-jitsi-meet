@@ -1,17 +1,17 @@
+/* global $, JitsiMeetJS */
+
 var options = {
     hosts: {
         domain: 'jitsi-meet.example.com',
         muc: 'conference.jitsi-meet.example.com', // FIXME: use XEP-0030
-        bridge: 'jitsi-videobridge.jitsi-meet.example.com', // FIXME: use XEP-0030
     },
     bosh: '//jitsi-meet.example.com/http-bind', // FIXME: use xep-0156 for that
     clientNode: 'http://jitsi.org/jitsimeet', // The name of client node advertised in XEP-0115 'c' stanza
-}
+};
 
 var confOptions = {
     openSctp: true
-}
-
+};
 
 var isJoined = false;
 
@@ -35,6 +35,10 @@ function onLocalTracks(tracks)
         localTracks[i].addEventListener(JitsiMeetJS.events.track.LOCAL_TRACK_STOPPED,
             function () {
                 console.log("local track stoped");
+            });
+        localTracks[i].addEventListener(JitsiMeetJS.events.track.TRACK_AUDIO_OUTPUT_CHANGED,
+            function (deviceId) {
+                console.log("track audio output device was changed to " + deviceId);
             });
         if(localTracks[i].getType() == "video") {
             $("body").append("<video autoplay='1' id='localVideo" + i + "' />");
@@ -71,6 +75,10 @@ function onRemoteTrack(track) {
         function () {
             console.log("remote track stoped");
         });
+    track.addEventListener(JitsiMeetJS.events.track.TRACK_AUDIO_OUTPUT_CHANGED,
+        function (deviceId) {
+            console.log("track audio output device was changed to " + deviceId);
+        });
     var id = participant + track.getType() + idx;
     if(track.getType() == "video") {
         $("body").append("<video autoplay='1' id='" + participant + "video" + idx + "' />");
@@ -96,7 +104,7 @@ function onUserLeft(id) {
         return;
     var tracks = remoteTracks[id];
     for(var i = 0; i< tracks.length; i++)
-        tracks[i].detach($("#" + id + tracks[i].getType()))
+        tracks[i].detach($("#" + id + tracks[i].getType()));
 }
 
 /**
@@ -121,7 +129,7 @@ function onConnectionSuccess(){
       function(userID, audioLevel){
           console.log(userID + " - " + audioLevel);
       });
-    room.on(JitsiMeetJS.events.conference.RECORDING_STATE_CHANGED, function () {
+    room.on(JitsiMeetJS.events.conference.RECORDER_STATE_CHANGED, function () {
         console.log(room.isRecordingSupported() + " - " +
             room.getRecordingState() + " - " +
             room.getRecordingURL());
@@ -132,12 +140,21 @@ function onConnectionSuccess(){
             room.getPhonePin());
     });
     room.join();
-};
+}
 
 /**
  * This function is called when the connection fail.
  */
-function onConnectionFailed(){console.error("Connection Failed!")};
+function onConnectionFailed() {
+    console.error("Connection Failed!");
+}
+
+/**
+ * This function is called when the connection fail.
+ */
+function onDeviceListChanged(devices) {
+    console.info('current devices', devices);
+}
 
 /**
  * This function is called when we disconnect.
@@ -155,8 +172,9 @@ function unload() {
     room.leave();
     connection.disconnect();
 }
+
 var isVideo = true;
-function switchVideo() {
+function switchVideo() { // eslint-disable-line no-unused-vars
     isVideo = !isVideo;
     if(localTracks[1]) {
         localTracks[1].dispose();
@@ -180,18 +198,20 @@ function switchVideo() {
         });
 }
 
+function changeAudioOutput(selected) { // eslint-disable-line no-unused-vars
+    JitsiMeetJS.mediaDevices.setAudioOutputDevice(selected.value);
+}
+
 $(window).bind('beforeunload', unload);
 $(window).bind('unload', unload);
-
-
 
 // JitsiMeetJS.setLogLevel(JitsiMeetJS.logLevels.ERROR);
 var initOptions = {
     disableAudioLevels: true,
-    // Desktop sharing method. Can be set to 'ext', 'webrtc' or false to disable.
-    desktopSharingChromeMethod: 'ext',
     // The ID of the jidesha extension for Chrome.
     desktopSharingChromeExtId: 'mbocklcggfhnbahlnepmldehdhpjfcjp',
+    // Whether desktop sharing should be disabled on Chrome.
+    desktopSharingChromeDisabled: false,
     // The media sources to use when using screen sharing with the Chrome
     // extension.
     desktopSharingChromeSources: ['screen', 'window'],
@@ -211,13 +231,15 @@ var initOptions = {
     desktopSharingFirefoxMaxVersionExtRequired: -1,
     // The URL to the Firefox extension for desktop sharing.
     desktopSharingFirefoxExtensionURL: null
-}
+};
 JitsiMeetJS.init(initOptions).then(function(){
     connection = new JitsiMeetJS.JitsiConnection(null, null, options);
 
     connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, onConnectionSuccess);
     connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_FAILED, onConnectionFailed);
     connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED, disconnect);
+
+    JitsiMeetJS.mediaDevices.addEventListener(JitsiMeetJS.events.mediaDevices.DEVICE_LIST_CHANGED, onDeviceListChanged);
 
     connection.connect();
     JitsiMeetJS.createLocalTracks({devices: ["audio", "video"]}).
@@ -227,6 +249,22 @@ JitsiMeetJS.init(initOptions).then(function(){
 }).catch(function (error) {
     console.log(error);
 });
+
+if (JitsiMeetJS.mediaDevices.isDeviceChangeAvailable('output')) {
+    JitsiMeetJS.mediaDevices.enumerateDevices(function(devices) {
+        var audioOutputDevices = devices.filter(function(d) { return d.kind === 'audiooutput'; });
+
+        if (audioOutputDevices.length > 1) {
+            $('#audioOutputSelect').html(
+                audioOutputDevices.map(function (d) {
+                    return '<option value="' + d.deviceId + '">' + d.label + '</option>';
+                }).join('\n')
+            );
+
+            $('#audioOutputSelectWrapper').show();
+        }
+    });
+}
 
 var connection = null;
 var room = null;

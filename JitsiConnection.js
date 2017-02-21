@@ -1,5 +1,7 @@
 var JitsiConference = require("./JitsiConference");
-var XMPP = require("./modules/xmpp/xmpp");
+import * as JitsiConnectionEvents from "./JitsiConnectionEvents";
+import XMPP from "./modules/xmpp/xmpp";
+var Statistics = require("./modules/statistics/statistics");
 
 /**
  * Creates new connection object for the Jitsi Meet server side video conferencing service. Provides access to the
@@ -13,20 +15,50 @@ function JitsiConnection(appID, token, options) {
     this.appID = appID;
     this.token = token;
     this.options = options;
-    this.xmpp = new XMPP(options);
-    this.conferences = {};
+    this.xmpp = new XMPP(options, token);
+
+    this.addEventListener(JitsiConnectionEvents.CONNECTION_FAILED,
+        function (errType, msg) {
+            // sends analytics and callstats event
+            Statistics.sendEventToAll('connection.failed.' + errType,
+                {label: msg});
+        }.bind(this));
+
+    this.addEventListener(JitsiConnectionEvents.CONNECTION_DISCONNECTED,
+        function (msg) {
+            // we can see disconnects from normal tab closing of the browser
+            // and then there are no msgs, but we want to log only disconnects
+            // when there is real error
+            if(msg)
+                Statistics.analytics.sendEvent(
+                    'connection.disconnected.' + msg);
+            Statistics.sendLog(
+                JSON.stringify({id: "connection.disconnected", msg: msg}));
+        });
 }
 
 /**
  * Connect the client with the server.
- * @param options {object} connecting options (for example authentications parameters).
+ * @param options {object} connecting options
+ * (for example authentications parameters).
  */
 JitsiConnection.prototype.connect = function (options) {
     if(!options)
         options = {};
 
     this.xmpp.connect(options.id, options.password);
-}
+};
+
+/**
+ * Attach to existing connection. Can be used for optimizations. For example:
+ * if the connection is created on the server we can attach to it and start
+ * using it.
+ *
+ * @param options {object} connecting options - rid, sid and jid.
+ */
+JitsiConnection.prototype.attach = function (options) {
+    this.xmpp.attach(options);
+};
 
 /**
  * Disconnect the client from the server.
@@ -39,7 +71,7 @@ JitsiConnection.prototype.disconnect = function () {
     var x = this.xmpp;
 
     x.disconnect.apply(x, arguments);
-}
+};
 
 /**
  * This method allows renewal of the tokens if they are expiring.
@@ -47,7 +79,7 @@ JitsiConnection.prototype.disconnect = function () {
  */
 JitsiConnection.prototype.setToken = function (token) {
     this.token = token;
-}
+};
 
 /**
  * Creates and joins new conference.
@@ -58,10 +90,8 @@ JitsiConnection.prototype.setToken = function (token) {
  * @returns {JitsiConference} returns the new conference object.
  */
 JitsiConnection.prototype.initJitsiConference = function (name, options) {
-    this.conferences[name] = new JitsiConference({name: name, config: options,
-        connection: this});
-    return this.conferences[name];
-}
+    return new JitsiConference({name: name, config: options, connection: this});
+};
 
 /**
  * Subscribes the passed listener to the event.
@@ -70,7 +100,7 @@ JitsiConnection.prototype.initJitsiConference = function (name, options) {
  */
 JitsiConnection.prototype.addEventListener = function (event, listener) {
     this.xmpp.addListener(event, listener);
-}
+};
 
 /**
  * Unsubscribes the passed handler.
@@ -79,6 +109,35 @@ JitsiConnection.prototype.addEventListener = function (event, listener) {
  */
 JitsiConnection.prototype.removeEventListener = function (event, listener) {
     this.xmpp.removeListener(event, listener);
-}
+};
+
+/**
+ * Returns measured connectionTimes.
+ */
+JitsiConnection.prototype.getConnectionTimes = function () {
+    return this.xmpp.connectionTimes;
+};
+
+/**
+ * Adds new feature to the list of supported features for the local
+ * participant.
+ * @param {String} feature the name of the feature.
+ * @param {boolean} submit if true - the new list of features will be
+ * immediately submitted to the others.
+ */
+JitsiConnection.prototype.addFeature = function(feature, submit = false) {
+    return this.xmpp.caps.addFeature(feature, submit);
+};
+
+/**
+ * Removes a feature from the list of supported features for the local
+ * participant
+ * @param {String} feature the name of the feature.
+ * @param {boolean} submit if true - the new list of features will be
+ * immediately submitted to the others.
+ */
+JitsiConnection.prototype.removeFeature = function (feature, submit = false) {
+    return this.xmpp.caps.removeFeature(feature, submit);
+};
 
 module.exports = JitsiConnection;
