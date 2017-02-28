@@ -93,9 +93,13 @@ export default class RTC extends Listenable {
         });
     }
 
-    onIncommingCall (event) {
+    /**
+     * Initializes the data channels of this instance.
+     * @param peerconnection the associated PeerConnection.
+     */
+    initializeDataChannels (peerconnection) {
         if(this.options.config.openSctp) {
-            this.dataChannels = new DataChannels(event.peerconnection,
+            this.dataChannels = new DataChannels(peerconnection,
                 this.eventEmitter);
             this._dataChannelOpenListener = () => {
                 // mark that dataChannel is opened
@@ -565,6 +569,21 @@ export default class RTC extends Listenable {
     sendDataChannelMessage (to, payload) {
         if(this.dataChannels) {
             this.dataChannels.sendDataChannelMessage(to, payload);
+        } else {
+            throw new Error("Data channels support is disabled!");
+        }
+    }
+
+    /**
+     * Selects a new value for "lastN". The requested amount of videos are going
+     * to be delivered after the value is in effect. Set to -1 for unlimited or
+     * all available videos.
+     * @param value {int} the new value for lastN.
+     * @trows Error if there is no data channel created.
+     */
+    setLastN (value) {
+        if (this.dataChannels) {
+            this.dataChannels.sendSetLastNMessage(value);
         } else {
             throw new Error("Data channels support is disabled!");
         }
