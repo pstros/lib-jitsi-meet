@@ -100,26 +100,20 @@ var isDeviceChangeEventSupported = false;
 var rtcReady = false;
 
 function setResolutionConstraints(constraints, resolution) {
-    var isAndroid = RTCBrowserType.isAndroid();
+    // XXX Google Chrome has been observed to fall down to 240x135 which is an
+    // odd resolution and odd resolutions may cause crashes in WebRTC on Android
+    // at least:
+    // - https://bugs.chromium.org/p/webrtc/issues/detail?id=6651
+    // - https://bugs.chromium.org/p/webrtc/issues/detail?id=7206
+    // As a mitigation, do not fall bellow the following minimal resolution.
+    // TODO Odd resolutions may still occur, for example, in desktop sharing.
+    constraints.video.mandatory.minHeight = 180;
+    constraints.video.mandatory.minWidth = 320;
 
     if (Resolutions[resolution]) {
-        constraints.video.mandatory.minWidth = Resolutions[resolution].width;
-        constraints.video.mandatory.minHeight = Resolutions[resolution].height;
+        constraints.video.mandatory.maxHeight = Resolutions[resolution].height;
+        constraints.video.mandatory.maxWidth = Resolutions[resolution].width;
     }
-    else if (isAndroid) {
-        // FIXME can't remember if the purpose of this was to always request
-        //       low resolution on Android ? if yes it should be moved up front
-        constraints.video.mandatory.minWidth = 320;
-        constraints.video.mandatory.minHeight = 180;
-        constraints.video.mandatory.maxFrameRate = 15;
-    }
-
-    if (constraints.video.mandatory.minWidth)
-        constraints.video.mandatory.maxWidth =
-            constraints.video.mandatory.minWidth;
-    if (constraints.video.mandatory.minHeight)
-        constraints.video.mandatory.maxHeight =
-            constraints.video.mandatory.minHeight;
 }
 
 /**
@@ -190,8 +184,6 @@ function getConstraints(um, options) {
                 constraints.video.mandatory.maxFrameRate = options.maxFps;
             }
         }
-
-        constraints.video.optional.push({ googLeakyBucket: true });
 
         setResolutionConstraints(constraints, options.resolution);
     }
@@ -796,6 +788,7 @@ class RTCUtils extends Listenable {
                     RTCBrowserType.isNWJS() ||
                     RTCBrowserType.isElectron() ||
                     RTCBrowserType.isReactNative()) {
+
                 this.peerconnection = webkitRTCPeerConnection;
                 var getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
                 if (navigator.mediaDevices) {
@@ -855,27 +848,11 @@ class RTCUtils extends Listenable {
             }
             // Detect IE/Safari
             else if (RTCBrowserType.isTemasysPluginUsed()) {
-
-                //AdapterJS.WebRTCPlugin.setLogLevel(
-                //    AdapterJS.WebRTCPlugin.PLUGIN_LOG_LEVELS.VERBOSE);
-
-                AdapterJS.WebRTCPlugin.isPluginInstalled(
-                  AdapterJS.WebRTCPlugin.pluginInfo.prefix,
-                  AdapterJS.WebRTCPlugin.pluginInfo.plugName,
-                  AdapterJS.WebRTCPlugin.pluginInfo.type,
-                  function temasysIsInstalled(){},
-                  function temasysNotInstalled(e) {
-                    console.error(e.message);
-                    reject(new Error("Temasys plugin is not installed"));
-                  });
-
-                var self = this;
-                AdapterJS.webRTCReady(function () {
-
-                    self.peerconnection = RTCPeerConnection;
-                    self.getUserMedia = window.getUserMedia;
-                    self.enumerateDevices = enumerateDevicesThroughMediaStreamTrack;
-                    self.attachMediaStream = wrapAttachMediaStream(function (element, stream) {
+                const webRTCReadyCb = () => {
+                    this.peerconnection = RTCPeerConnection;
+                    this.getUserMedia = window.getUserMedia;
+                    this.enumerateDevices = enumerateDevicesThroughMediaStreamTrack;
+                    this.attachMediaStream = wrapAttachMediaStream((element, stream) => {
                         if (stream) {
                             if (stream.id === "dummyAudio"
                                     || stream.id === "dummyVideo") {
@@ -899,14 +876,37 @@ class RTCUtils extends Listenable {
 
                         return attachMediaStream(element, stream);
                     });
-                    self.getStreamID = function (stream) {
-                        return SDPUtil.filter_special_chars(stream.label);
-                    };
+                    this.getStreamID
+                        = stream => SDPUtil.filter_special_chars(stream.label);
 
-                    onReady(options,
-                        self.getUserMediaWithConstraints.bind(self));
-                    resolve();
-                });
+                    onReady(
+                        options,
+                        this.getUserMediaWithConstraints.bind(this));
+                };
+                const webRTCReadyPromise
+                    = new Promise(resolve => AdapterJS.webRTCReady(resolve));
+
+                // Resolve or reject depending on whether the Temasys plugin is
+                // installed.
+                AdapterJS.WebRTCPlugin.isPluginInstalled(
+                    AdapterJS.WebRTCPlugin.pluginInfo.prefix,
+                    AdapterJS.WebRTCPlugin.pluginInfo.plugName,
+                    AdapterJS.WebRTCPlugin.pluginInfo.type,
+                    /* installed */ () => {
+                        webRTCReadyPromise.then(() => {
+                            webRTCReadyCb();
+                            resolve();
+                        });
+                    },
+                    /* not installed */ () => {
+                        const error
+                            = new Error('Temasys plugin is not installed');
+
+                        error.name = 'WEBRTC_NOT_READY';
+                        error.webRTCReadyPromise = webRTCReadyPromise;
+
+                        reject(error);
+                    });
             } else {
                 rejectWithWebRTCNotSupported(
                     'Browser does not appear to be WebRTC-capable',
