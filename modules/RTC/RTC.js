@@ -502,7 +502,7 @@ export default class RTC extends Listenable {
             delete this.remoteTracks[
                 toBeRemoved.getParticipantId()][toBeRemoved.getType()];
 
-            this.rtc.eventEmitter.emit(
+            this.eventEmitter.emit(
                 RTCEvents.REMOTE_TRACK_REMOVED, toBeRemoved);
         }
 
