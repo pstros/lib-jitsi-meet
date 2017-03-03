@@ -877,6 +877,10 @@ JingleSessionPC.prototype._renegotiate = function(optionalRemoteSdp) {
 JingleSessionPC.prototype.replaceTrack = function (oldTrack, newTrack) {
     return new Promise((resolve, reject) => {
         let workFunction = (finishedCallback) => {
+            //clear the ssrc cache if we actually adding or removing a track
+            if(!oldTrack || !newTrack) {
+                this.peerconnection.clearSsrcCache();
+            }
             let oldSdp = new SDP(this.peerconnection.localDescription.sdp);
             this.removeStreamFromPeerConnection(oldTrack);
             this.addStreamToPeerConnection(newTrack);
