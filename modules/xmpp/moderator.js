@@ -147,33 +147,13 @@ Moderator.prototype.createConferenceIq =  function () {
                 value: this.options.conference.channelLastN
             }).up();
     }
-    if (this.options.conference.adaptiveLastN !== undefined) {
-        elem.c(
-            'property', {
-                name: 'adaptiveLastN',
-                value: this.options.conference.adaptiveLastN
-            }).up();
-    }
-    if (this.options.conference.disableAdaptiveSimulcast !== undefined ||
-        this.options.conference.disableSimulcast) {
-        // disableSimulcast implies disableAdaptiveSimulcast.
-        var value = this.options.conference.disableSimulcast ? true :
-            this.options.conference.disableAdaptiveSimulcast;
-        elem.c(
-            'property', {
-                name: 'disableAdaptiveSimulcast',
-                value: value
-            }).up();
-    }
-    // TODO: re-enable once rtx is stable
-    //if (this.options.conference.disableRtx !== undefined) {
+    if (this.options.conference.disableRtx !== undefined) {
         elem.c(
             'property', {
                 name: 'disableRtx',
-                //value: this.options.conference.disableRtx
-                value: true
+                value: this.options.conference.disableRtx
             }).up();
-    //}
+    }
     elem.c(
         'property', {
             name: 'enableLipSync',
@@ -228,13 +208,6 @@ Moderator.prototype.createConferenceIq =  function () {
                 value: this.options.conference.stereo
             }).up();
     }
-
-    elem.c(
-        'property', {
-            name: 'simulcastMode',
-            value: 'rewriting'
-        }).up();
-
     if (this.options.conference.useRoomAsSharedDocumentName !== undefined) {
         elem.c(
             'property', {

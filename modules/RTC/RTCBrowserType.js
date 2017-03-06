@@ -20,6 +20,8 @@ var RTCBrowserType = {
 
     RTC_BROWSER_NWJS: "rtc_browser.nwjs",
 
+    RTC_BROWSER_ELECTRON: "rtc_browser.electron",
+
     RTC_BROWSER_REACT_NATIVE: "rtc_browser.react-native",
 
     /**
@@ -91,6 +93,14 @@ var RTCBrowserType = {
     },
 
     /**
+     * Checks if current environment is Electron.
+     * @returns {boolean}
+     */
+    isElectron: function () {
+        return currentBrowser === RTCBrowserType.RTC_BROWSER_ELECTRON;
+    },
+
+    /**
      * Checks if current environment is React Native.
      * @returns {boolean}
      */
@@ -103,7 +113,14 @@ var RTCBrowserType = {
      * @returns {boolean}
      */
     isTemasysPluginUsed: function () {
-        return RTCBrowserType.isIExplorer() || RTCBrowserType.isSafari();
+        // Temasys do not support Microsoft Edge:
+        // http://support.temasys.com.sg/support/solutions/articles/5000654345-can-the-temasys-webrtc-plugin-be-used-with-microsoft-edge-
+        if (RTCBrowserType.isIExplorer()
+                && RTCBrowserType.getIExplorerVersion() < 12) {
+            return true;
+        }
+
+        return RTCBrowserType.isSafari();
     },
 
     /**
@@ -132,6 +149,15 @@ var RTCBrowserType = {
         return RTCBrowserType.isChrome() ? browserVersion : null;
     },
 
+    /**
+     * Returns Internet Explorer version.
+     *
+     * @returns {number|null}
+     */
+    getIExplorerVersion: function () {
+        return RTCBrowserType.isIExplorer() ? browserVersion : null;
+    },
+
     usesPlanB: function() {
         return RTCBrowserType.isChrome() || RTCBrowserType.isOpera() ||
             RTCBrowserType.isTemasysPluginUsed();
@@ -154,7 +180,10 @@ var RTCBrowserType = {
      * @returns {boolean}
      */
     supportsSimulcast: function() {
-        return RTCBrowserType.isChrome();
+        // This mirrors what sdp-simulcast uses (which is used when deciding
+        // whether to actually enable simulcast or not).
+        // TODO: the logic should be in one single place.
+        return !!window.chrome;
     }
 
     // Add version getters for other browsers when needed
@@ -237,6 +266,20 @@ function detectIE() {
     return version;
 }
 
+/**
+ * Detects Electron environment.
+ */
+function detectElectron (){
+    var userAgent = navigator.userAgent;
+    if (userAgent.match(/Electron/)) {
+        currentBrowser = RTCBrowserType.RTC_BROWSER_ELECTRON;
+        var version = userAgent.match(/Electron\/([\d.]+)/)[1];
+        logger.info("This appears to be Electron, ver: " + version);
+        return version;
+    }
+    return null;
+}
+
 function detectNWJS (){
     var userAgent = navigator.userAgent;
     if (userAgent.match(/JitsiMeetNW/)) {
@@ -280,6 +323,7 @@ function detectBrowser() {
     var version;
     var detectors = [
         detectReactNative,
+        detectElectron,
         detectNWJS,
         detectOpera,
         detectChrome,

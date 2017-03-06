@@ -9,7 +9,7 @@ const logger = getLogger(__filename);
 import * as JingleSessionState from "./JingleSessionState";
 
 function JingleSession(me, sid, peerjid, connection,
-                       media_constraints, ice_config, service, eventEmitter) {
+                       media_constraints, ice_config) {
     /**
      * Our JID.
      */
@@ -29,16 +29,6 @@ function JingleSession(me, sid, peerjid, connection,
      * The XMPP connection.
      */
     this.connection = connection;
-
-    /**
-     * The XMPP service.
-     */
-    this.service = service;
-
-    /**
-     * The event emitter.
-     */
-    this.eventEmitter = eventEmitter;
 
     /**
      * Whether to use dripping or not. Dripping is sending trickle candidates
@@ -66,14 +56,21 @@ function JingleSession(me, sid, peerjid, connection,
      * @type {JingleSessionState}
      */
     this.state = null;
+
+    /**
+     * The RTC service instance
+     * @type {RTC}
+     */
+    this.rtc = null;
 }
 
 /**
  * Prepares this object to initiate a session.
  * @param isInitiator whether we will be the Jingle initiator.
  * @param room <tt>ChatRoom<tt> for the conference associated with this session
+ * @param {RTC} rtc the RTC service instance
  */
-JingleSession.prototype.initialize = function(isInitiator, room) {
+JingleSession.prototype.initialize = function(isInitiator, room, rtc) {
     if (this.state !== null) {
         var errmsg
             = 'attempt to initiate on session ' + this.sid + 'in state '
@@ -82,6 +79,7 @@ JingleSession.prototype.initialize = function(isInitiator, room) {
         throw new Error(errmsg);
     }
     this.room = room;
+    this.rtc = rtc;
     this.state = JingleSessionState.PENDING;
     this.initiator = isInitiator ? this.me : this.peerjid;
     this.responder = !isInitiator ? this.me : this.peerjid;
