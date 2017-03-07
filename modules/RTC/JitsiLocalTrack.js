@@ -1,16 +1,19 @@
 /* global __filename, Promise */
-var CameraFacingMode = require('../../service/RTC/CameraFacingMode');
-var JitsiTrack = require("./JitsiTrack");
+
+import CameraFacingMode from "../../service/RTC/CameraFacingMode";
+import { getLogger } from "jitsi-meet-logger";
+import JitsiTrack from "./JitsiTrack";
 import JitsiTrackError from "../../JitsiTrackError";
 import * as JitsiTrackErrors from "../../JitsiTrackErrors";
 import * as JitsiTrackEvents from "../../JitsiTrackEvents";
-var logger = require("jitsi-meet-logger").getLogger(__filename);
-var MediaType = require('../../service/RTC/MediaType');
-var RTCBrowserType = require("./RTCBrowserType");
-var RTCEvents = require("../../service/RTC/RTCEvents");
-var RTCUtils = require("./RTCUtils");
-var Statistics = require("../statistics/statistics");
-var VideoType = require('../../service/RTC/VideoType');
+import * as MediaType from "../../service/RTC/MediaType";
+import RTCBrowserType from "./RTCBrowserType";
+import RTCEvents from "../../service/RTC/RTCEvents";
+import RTCUtils from "./RTCUtils";
+import Statistics from "../statistics/statistics";
+import VideoType from "../../service/RTC/VideoType";
+
+const logger = getLogger(__filename);
 
 /**
  * Represents a single media track(either audio or video).
@@ -286,8 +289,7 @@ JitsiLocalTrack.prototype._setMute = function (mute) {
     this.dontFireRemoveEvent = false;
 
     // FIXME FF does not support 'removeStream' method used to mute
-    if (window.location.protocol !== "https:" ||
-        this.isAudioTrack() ||
+    if (this.isAudioTrack() ||
         this.videoType === VideoType.DESKTOP ||
         RTCBrowserType.isFirefox()) {
         if(this.track)
@@ -364,17 +366,17 @@ JitsiLocalTrack.prototype._setMute = function (mute) {
  * @returns {Promise}
  */
 JitsiLocalTrack.prototype._addStreamToConferenceAsUnmute = function () {
-    if (!this.conference || !this.conference.room) {
+    if (!this.conference) {
         return Promise.resolve();
     }
 
     var self = this;
 
     return new Promise(function(resolve, reject) {
-        self.conference.room.addStream(
+        self.conference._addLocalStream(
             self.stream,
             resolve,
-            reject,
+            (error) => reject(new Error(error)),
             {
                 mtype: self.type,
                 type: "unmute",
@@ -392,15 +394,15 @@ JitsiLocalTrack.prototype._addStreamToConferenceAsUnmute = function () {
  */
 JitsiLocalTrack.prototype._removeStreamFromConferenceAsMute =
 function (successCallback, errorCallback) {
-    if (!this.conference || !this.conference.room) {
+    if (!this.conference) {
         successCallback();
         return;
     }
 
-    this.conference.room.removeStream(
+    this.conference.removeLocalStream(
         this.stream,
         successCallback,
-        errorCallback,
+        (error) => errorCallback(new Error(error)),
         {
             mtype: this.type,
             type: "mute",
