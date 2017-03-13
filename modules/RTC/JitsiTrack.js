@@ -1,10 +1,12 @@
 /* global __filename, module */
-var logger = require("jitsi-meet-logger").getLogger(__filename);
-var RTCBrowserType = require("./RTCBrowserType");
-var RTCUtils = require("./RTCUtils");
+import EventEmitter from "events";
+import { getLogger } from "jitsi-meet-logger";
 import * as JitsiTrackEvents from "../../JitsiTrackEvents";
-var EventEmitter = require("events");
-var MediaType = require("../../service/RTC/MediaType");
+import * as MediaType from "../../service/RTC/MediaType";
+import RTCBrowserType from "./RTCBrowserType";
+import RTCUtils from "./RTCUtils";
+
+const logger = getLogger(__filename);
 
 /**
  * Maps our handler types to MediaStreamTrack properties.
@@ -306,15 +308,6 @@ JitsiTrack.prototype.dispose = function () {
  * screen capture as opposed to a camera.
  */
 JitsiTrack.prototype.isScreenSharing = function() {
-};
-
-/**
- * FIXME remove hack in SDP.js and this method
- * Returns id of the track.
- * @returns {string|null} id of the track or null if this is fake track.
- */
-JitsiTrack.prototype._getId = function () {
-    return this.getTrackId();
 };
 
 /**
