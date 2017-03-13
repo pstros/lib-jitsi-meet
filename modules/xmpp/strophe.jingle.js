@@ -2,7 +2,7 @@
 
 import { getLogger } from "jitsi-meet-logger";
 const logger = getLogger(__filename);
-import JingleSession from "./JingleSessionPC";
+import JingleSessionPC from "./JingleSessionPC";
 import XMPPEvents from "../../service/xmpp/XMPPEvents";
 import GlobalOnErrorHandler from "../util/GlobalOnErrorHandler";
 import Statistics from "../statistics/statistics";
@@ -85,12 +85,13 @@ class JingleConnectionPlugin extends ConnectionPlugin {
                     this.eventEmitter.emit(XMPPEvents.START_MUTED_FROM_FOCUS,
                             audioMuted === "true", videoMuted === "true");
                 }
-                sess = new JingleSession(
-                        $(iq).attr('to'), $(iq).find('jingle').attr('sid'),
+                sess = new JingleSessionPC(
+                        $(iq).find('jingle').attr('sid'),
+                        $(iq).attr('to'),
                         fromJid,
                         this.connection,
                         this.media_constraints,
-                        this.ice_config, this.xmpp);
+                        this.ice_config, this.xmpp.options);
 
                 this.sessions[sess.sid] = sess;
 
@@ -134,11 +135,11 @@ class JingleConnectionPlugin extends ConnectionPlugin {
                 break;
             case 'addsource': // FIXME: proprietary, un-jingleish
             case 'source-add': // FIXME: proprietary
-                sess.addSource($(iq).find('>jingle>content'));
+                sess.addRemoteStream($(iq).find('>jingle>content'));
                 break;
             case 'removesource': // FIXME: proprietary, un-jingleish
             case 'source-remove': // FIXME: proprietary
-                sess.removeSource($(iq).find('>jingle>content'));
+                sess.removeRemoteStream($(iq).find('>jingle>content'));
                 break;
             default:
                 logger.warn('jingle action not implemented', action);

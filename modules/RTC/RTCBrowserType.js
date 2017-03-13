@@ -20,13 +20,15 @@ var RTCBrowserType = {
 
     RTC_BROWSER_NWJS: "rtc_browser.nwjs",
 
+    RTC_BROWSER_ELECTRON: "rtc_browser.electron",
+
     RTC_BROWSER_REACT_NATIVE: "rtc_browser.react-native",
 
     /**
      * Gets current browser type.
      * @returns {string}
      */
-    getBrowserType: function () {
+    getBrowserType() {
         return currentBrowser;
     },
 
@@ -34,10 +36,12 @@ var RTCBrowserType = {
      * Gets current browser name, split from the type.
      * @returns {string}
      */
-    getBrowserName: function () {
-        var browser = currentBrowser.split('rtc_browser.')[1];
+    getBrowserName() {
+        var browser;
         if (RTCBrowserType.isAndroid()) {
             browser = 'android';
+        } else {
+            browser = currentBrowser.split('rtc_browser.')[1];
         }
         return browser;
     },
@@ -46,7 +50,7 @@ var RTCBrowserType = {
      * Checks if current browser is Chrome.
      * @returns {boolean}
      */
-    isChrome: function () {
+    isChrome() {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_CHROME;
     },
 
@@ -54,7 +58,7 @@ var RTCBrowserType = {
      * Checks if current browser is Opera.
      * @returns {boolean}
      */
-    isOpera: function () {
+    isOpera() {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_OPERA;
     },
 
@@ -62,7 +66,7 @@ var RTCBrowserType = {
      * Checks if current browser is Firefox.
      * @returns {boolean}
      */
-    isFirefox: function () {
+    isFirefox() {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_FIREFOX;
     },
 
@@ -70,7 +74,7 @@ var RTCBrowserType = {
      * Checks if current browser is Internet Explorer.
      * @returns {boolean}
      */
-    isIExplorer: function () {
+    isIExplorer() {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_IEXPLORER;
     },
 
@@ -78,7 +82,7 @@ var RTCBrowserType = {
      * Checks if current browser is Safari.
      * @returns {boolean}
      */
-    isSafari: function () {
+    isSafari() {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_SAFARI;
     },
 
@@ -86,15 +90,23 @@ var RTCBrowserType = {
      * Checks if current environment is NWJS.
      * @returns {boolean}
      */
-    isNWJS: function () {
+    isNWJS() {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_NWJS;
+    },
+
+    /**
+     * Checks if current environment is Electron.
+     * @returns {boolean}
+     */
+    isElectron() {
+        return currentBrowser === RTCBrowserType.RTC_BROWSER_ELECTRON;
     },
 
     /**
      * Checks if current environment is React Native.
      * @returns {boolean}
      */
-    isReactNative: function () {
+    isReactNative() {
         return currentBrowser === RTCBrowserType.RTC_BROWSER_REACT_NATIVE;
     },
 
@@ -102,8 +114,15 @@ var RTCBrowserType = {
      * Checks if Temasys RTC plugin is used.
      * @returns {boolean}
      */
-    isTemasysPluginUsed: function () {
-        return RTCBrowserType.isIExplorer() || RTCBrowserType.isSafari();
+    isTemasysPluginUsed() {
+        // Temasys do not support Microsoft Edge:
+        // http://support.temasys.com.sg/support/solutions/articles/5000654345-can-the-temasys-webrtc-plugin-be-used-with-microsoft-edge-
+        if (RTCBrowserType.isIExplorer()
+                && RTCBrowserType.getIExplorerVersion() < 12) {
+            return true;
+        }
+
+        return RTCBrowserType.isSafari();
     },
 
     /**
@@ -112,7 +131,7 @@ var RTCBrowserType = {
      * @returns {*|boolean} 'true' if the event is supported or 'false'
      * otherwise.
      */
-    isVideoMuteOnConnInterruptedSupported: function () {
+    isVideoMuteOnConnInterruptedSupported() {
         return RTCBrowserType.isChrome();
     },
 
@@ -120,7 +139,7 @@ var RTCBrowserType = {
      * Returns Firefox version.
      * @returns {number|null}
      */
-    getFirefoxVersion: function () {
+    getFirefoxVersion() {
         return RTCBrowserType.isFirefox() ? browserVersion : null;
     },
 
@@ -128,16 +147,28 @@ var RTCBrowserType = {
      * Returns Chrome version.
      * @returns {number|null}
      */
-    getChromeVersion: function () {
+    getChromeVersion() {
         return RTCBrowserType.isChrome() ? browserVersion : null;
     },
 
-    usesPlanB: function() {
-        return RTCBrowserType.isChrome() || RTCBrowserType.isOpera() ||
-            RTCBrowserType.isTemasysPluginUsed();
+    /**
+     * Returns Internet Explorer version.
+     *
+     * @returns {number|null}
+     */
+    getIExplorerVersion() {
+        return RTCBrowserType.isIExplorer() ? browserVersion : null;
     },
 
-    usesUnifiedPlan: function() {
+    usesPlanB() {
+        return (
+            RTCBrowserType.isChrome()
+                || RTCBrowserType.isOpera()
+                || RTCBrowserType.isReactNative()
+                || RTCBrowserType.isTemasysPluginUsed());
+    },
+
+    usesUnifiedPlan() {
         return RTCBrowserType.isFirefox();
     },
 
@@ -145,7 +176,7 @@ var RTCBrowserType = {
      * Whether the browser is running on an android device.
      * @returns {boolean}
      */
-    isAndroid: function() {
+    isAndroid() {
         return isAndroid;
     },
 
@@ -153,8 +184,11 @@ var RTCBrowserType = {
      * Whether jitsi-meet supports simulcast on the current browser.
      * @returns {boolean}
      */
-    supportsSimulcast: function() {
-        return RTCBrowserType.isChrome();
+    supportsSimulcast() {
+        // This mirrors what sdp-simulcast uses (which is used when deciding
+        // whether to actually enable simulcast or not).
+        // TODO: the logic should be in one single place.
+        return !!window.chrome;
     }
 
     // Add version getters for other browsers when needed
@@ -237,7 +271,21 @@ function detectIE() {
     return version;
 }
 
-function detectNWJS (){
+/**
+ * Detects Electron environment.
+ */
+function detectElectron() {
+    var userAgent = navigator.userAgent;
+    if (userAgent.match(/Electron/)) {
+        currentBrowser = RTCBrowserType.RTC_BROWSER_ELECTRON;
+        var version = userAgent.match(/Electron\/([\d.]+)/)[1];
+        logger.info("This appears to be Electron, ver: " + version);
+        return version;
+    }
+    return null;
+}
+
+function detectNWJS() {
     var userAgent = navigator.userAgent;
     if (userAgent.match(/JitsiMeetNW/)) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_NWJS;
@@ -262,12 +310,8 @@ function detectReactNative() {
             name = match[1];
             version = match[2];
         }
-        if (!name) {
-            name = 'react-native';
-        }
-        if (!version) {
-            version = 'unknown';
-        }
+        name || (name = 'react-native');
+        version || (version = 'unknown');
         console.info('This appears to be ' + name + ', ver: ' + version);
     } else {
         // We're not running in a React Native environment.
@@ -280,6 +324,7 @@ function detectBrowser() {
     var version;
     var detectors = [
         detectReactNative,
+        detectElectron,
         detectNWJS,
         detectOpera,
         detectChrome,

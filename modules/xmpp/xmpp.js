@@ -2,7 +2,6 @@
 
 import { getLogger } from "jitsi-meet-logger";
 const logger = getLogger(__filename);
-import EventEmitter from "events";
 import RandomUtil from "../util/RandomUtil";
 import * as JitsiConnectionErrors from "../../JitsiConnectionErrors";
 import * as JitsiConnectionEvents from "../../JitsiConnectionEvents";
@@ -13,6 +12,8 @@ import initStropheUtil from "./strophe.util";
 import initPing from "./strophe.ping";
 import initRayo from "./strophe.rayo";
 import initStropheLogger from "./strophe.logger";
+import Listenable from "../util/Listenable";
+import Caps from "./Caps";
 
 function createConnection(token, bosh = '/http-bind') {
     // Append token as URL param
@@ -23,9 +24,9 @@ function createConnection(token, bosh = '/http-bind') {
     return new Strophe.Connection(bosh);
 }
 
-export default class XMPP {
+export default class XMPP extends Listenable {
     constructor(options, token) {
-        this.eventEmitter = new EventEmitter();
+        super();
         this.connection = null;
         this.disconnectInProgress = false;
         this.connectionTimes = {};
@@ -38,9 +39,7 @@ export default class XMPP {
 
         this.connection = createConnection(token, options.bosh);
 
-        if(!this.connection.disco || !this.connection.caps)
-            throw new Error(
-                "Missing strophe-plugins (disco and caps plugins are required)!");
+        this.caps = new Caps(this.connection, this.options.clientNode);
 
         // Initialize features advertised in disco-info
         this.initFeaturesList();
@@ -57,38 +56,39 @@ export default class XMPP {
      * Initializes the list of feature advertised through the disco-info mechanism
      */
     initFeaturesList () {
-        const disco = this.connection.disco;
-        if (!disco)
-            return;
-
         // http://xmpp.org/extensions/xep-0167.html#support
         // http://xmpp.org/extensions/xep-0176.html#support
-        disco.addFeature('urn:xmpp:jingle:1');
-        disco.addFeature('urn:xmpp:jingle:apps:rtp:1');
-        disco.addFeature('urn:xmpp:jingle:transports:ice-udp:1');
-        disco.addFeature('urn:xmpp:jingle:apps:dtls:0');
-        disco.addFeature('urn:xmpp:jingle:transports:dtls-sctp:1');
-        disco.addFeature('urn:xmpp:jingle:apps:rtp:audio');
-        disco.addFeature('urn:xmpp:jingle:apps:rtp:video');
+        this.caps.addFeature('urn:xmpp:jingle:1');
+        this.caps.addFeature('urn:xmpp:jingle:apps:rtp:1');
+        this.caps.addFeature('urn:xmpp:jingle:transports:ice-udp:1');
+        this.caps.addFeature('urn:xmpp:jingle:apps:dtls:0');
+        this.caps.addFeature('urn:xmpp:jingle:transports:dtls-sctp:1');
+        this.caps.addFeature('urn:xmpp:jingle:apps:rtp:audio');
+        this.caps.addFeature('urn:xmpp:jingle:apps:rtp:video');
 
-        if (RTCBrowserType.isChrome() || RTCBrowserType.isOpera()
-            || RTCBrowserType.isTemasysPluginUsed()) {
-            disco.addFeature('urn:ietf:rfc:4588');
+        if (!this.options.disableRtx && !RTCBrowserType.isFirefox()) {
+            this.caps.addFeature('urn:ietf:rfc:4588');
         }
 
         // this is dealt with by SDP O/A so we don't need to announce this
-        //disco.addFeature('urn:xmpp:jingle:apps:rtp:rtcp-fb:0'); // XEP-0293
-        //disco.addFeature('urn:xmpp:jingle:apps:rtp:rtp-hdrext:0'); // XEP-0294
+        // XEP-0293
+        //this.caps.addFeature('urn:xmpp:jingle:apps:rtp:rtcp-fb:0');
+        // XEP-0294
+        //this.caps.addFeature('urn:xmpp:jingle:apps:rtp:rtp-hdrext:0');
 
-        disco.addFeature('urn:ietf:rfc:5761'); // rtcp-mux
-        disco.addFeature('urn:ietf:rfc:5888'); // a=group, e.g. bundle
+        this.caps.addFeature('urn:ietf:rfc:5761'); // rtcp-mux
+        this.caps.addFeature('urn:ietf:rfc:5888'); // a=group, e.g. bundle
 
-        //disco.addFeature('urn:ietf:rfc:5576'); // a=ssrc
+        //this.caps.addFeature('urn:ietf:rfc:5576'); // a=ssrc
 
         // Enable Lipsync ?
         if (RTCBrowserType.isChrome() && false !== this.options.enableLipSync) {
             logger.info("Lip-sync enabled !");
-            disco.addFeature('http://jitsi.org/meet/lipsync');
+            this.caps.addFeature('http://jitsi.org/meet/lipsync');
+        }
+
+        if(this.connection.rayo) {
+            this.caps.addFeature('urn:xmpp:rayo:client:1');
         }
     }
 
@@ -286,14 +286,6 @@ export default class XMPP {
         return this.connection.emuc.createRoom(roomjid, null, options);
     }
 
-    addListener (type, listener) {
-        this.eventEmitter.on(type, listener);
-    }
-
-    removeListener (type, listener) {
-        this.eventEmitter.removeListener(type, listener);
-    }
-
     /**
      * Returns the logs from strophe.jingle.
      * @returns {Object}
@@ -379,7 +371,7 @@ export default class XMPP {
         initEmuc(this);
         initJingle(this, this.eventEmitter);
         initStropheUtil();
-        initPing(this, this.eventEmitter);
+        initPing(this);
         initRayo();
         initStropheLogger();
     }
