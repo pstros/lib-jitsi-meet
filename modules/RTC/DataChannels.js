@@ -14,6 +14,7 @@ function DataChannels(peerConnection, emitter) {
     this.eventEmitter = emitter;
 
     this._dataChannels = [];
+    this._queuedMessages = [];
 
     // Sample code for opening new data channel from Jitsi Meet to the bridge.
     // Although it's not a requirement to open separate channels from both
@@ -56,6 +57,14 @@ DataChannels.prototype.onDataChannel = function(event) {
         // dataChannel.send("Hello bridge!");
         // Sends 12 bytes binary message to the bridge
         // dataChannel.send(new ArrayBuffer(12));
+
+        if (self._queuedMessages.length > 0) {
+            logger.info('Sending messages queued before data channel opened');
+            self._queuedMessages.forEach(message => {
+                self.send(message);
+            });
+            self._queuedMessages = [];
+        }
 
         self.eventEmitter.emit(RTCEvents.DATA_CHANNEL_OPEN);
     };
@@ -228,7 +237,8 @@ DataChannels.prototype._some = function(callback, thisArg) {
  * @param jsonObject {object} the object that will be sent
  * @throws NetworkError or InvalidStateError from RTCDataChannel#send (@see
  * {@link https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel/send})
- * or Error with "No opened data channels found!" message.
+ * @returns {Boolean} true if message was sent right away, false if it was
+ * added to the queue
  */
 DataChannels.prototype.send = function(jsonObject) {
     if (!this._some(dataChannel => {
@@ -238,7 +248,10 @@ DataChannels.prototype.send = function(jsonObject) {
             return true;
         }
     })) {
-        throw new Error('No opened data channels found!');
+        this._queuedMessages.push(jsonObject);
+        logger.warn('No opened data channels found! Message added to queue');
+
+        return false;
     }
 };
 
