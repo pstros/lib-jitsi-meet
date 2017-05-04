@@ -1,15 +1,17 @@
 /* global __filename */
-import { getLogger } from "jitsi-meet-logger";
-import * as JingleSessionState from "./JingleSessionState";
+import { getLogger } from 'jitsi-meet-logger';
+import * as JingleSessionState from './JingleSessionState';
 
 const logger = getLogger(__filename);
 
-/*
+/**
  * JingleSession provides an API to manage a single Jingle session. We will
  * have different implementations depending on the underlying interface used
  * (i.e. WebRTC and ORTC) and here we hold the code common to all of them.
  */
 export default class JingleSession {
+
+    /* eslint-disable max-params */
 
     /**
      * Creates new <tt>JingleSession</tt>.
@@ -17,19 +19,24 @@ export default class JingleSession {
      * @param {string} localJid our JID
      * @param {string} peerjid the JID of the remote peer
      * @param {Strophe.Connection} connection the XMPP connection
-     * @param {Object} media_constraints the media constraints object passed to
+     * @param {Object} mediaConstraints the media constraints object passed to
      * the PeerConnection onCreateAnswer/Offer as defined by the WebRTC.
-     * @param {Object} ice_config the ICE servers config object as defined by
+     * @param {Object} iceConfig the ICE servers config object as defined by
      * the WebRTC. Passed to the PeerConnection's constructor.
      */
-    constructor(sid,
-                localJid, peerjid, connection, media_constraints, ice_config) {
+    constructor(
+            sid,
+            localJid,
+            peerjid,
+            connection,
+            mediaConstraints,
+            iceConfig) {
         this.sid = sid;
         this.localJid = localJid;
         this.peerjid = peerjid;
         this.connection = connection;
-        this.media_constraints = media_constraints;
-        this.ice_config = ice_config;
+        this.mediaConstraints = mediaConstraints;
+        this.iceConfig = iceConfig;
 
         /**
          * Whether to use dripping or not. Dripping is sending trickle
@@ -40,7 +47,7 @@ export default class JingleSession {
         /**
          *  When dripping is used, stores ICE candidates which are to be sent.
          */
-        this.drip_container = [];
+        this.dripContainer = [];
 
         /**
          * The chat room instance associated with the session.
@@ -61,6 +68,8 @@ export default class JingleSession {
         this.rtc = null;
     }
 
+    /* eslint-enable max-params */
+
     /**
      * Prepares this object to initiate a session.
      * @param {boolean} isInitiator whether we will be the Jingle initiator.
@@ -73,6 +82,7 @@ export default class JingleSession {
             const errmsg
                 = `attempt to initiate on session ${this.sid}
                    in state ${this.state}`;
+
             logger.error(errmsg);
             throw new Error(errmsg);
         }
@@ -80,7 +90,7 @@ export default class JingleSession {
         this.rtc = rtc;
         this.state = JingleSessionState.PENDING;
         this.initiator = isInitiator ? this.localJid : this.peerjid;
-        this.responder = !isInitiator ? this.localJid : this.peerjid;
+        this.responder = isInitiator ? this.peerjid : this.localJid;
         this.doInitialize();
     }
 
@@ -89,19 +99,20 @@ export default class JingleSession {
      * {@link initialize}.
      * @protected
      */
-    doInitialize() {
+    doInitialize() {} // eslint-disable-line no-empty-function
 
-    }
+    /* eslint-disable no-unused-vars, no-empty-function */
 
     /**
      * Adds the ICE candidates found in the 'contents' array as remote
      * candidates?
      * Note: currently only used on transport-info
+     *
+     * @param contents
      */
-    // eslint-disable-next-line no-unused-vars
-    addIceCandidates(contents) {
+    addIceCandidates(contents) {}
 
-    }
+    /* eslint-enable no-unused-vars, no-empty-function */
 
     /**
      * Returns current state of this <tt>JingleSession</tt> instance.
@@ -111,25 +122,23 @@ export default class JingleSession {
         return this.state;
     }
 
+    /* eslint-disable no-unused-vars, no-empty-function */
+
     /**
      * Handles an 'add-source' event.
      *
      * @param contents an array of Jingle 'content' elements.
      */
-    // eslint-disable-next-line no-unused-vars
-    addSources(contents) {
-
-    }
+    addSources(contents) {}
 
     /**
      * Handles a 'remove-source' event.
      *
      * @param contents an array of Jingle 'content' elements.
      */
-    // eslint-disable-next-line no-unused-vars
-    removeSources(contents) {
+    removeSources(contents) {}
 
-    }
+    /* eslint-disable max-params */
 
     /**
      * Terminates this Jingle session by sending session-terminate
@@ -140,10 +149,9 @@ export default class JingleSession {
      * @param failure a callback called when either timeout occurs or ERROR
      * response is received.
      */
-    // eslint-disable-next-line no-unused-vars
-    terminate(reason, text, success, failure) {
+    terminate(reason, text, success, failure) {}
 
-    }
+    /* eslint-enable max-params */
 
     /**
      * Handles an offer from the remote peer (prepares to accept a session).
@@ -154,8 +162,7 @@ export default class JingleSession {
      * error object with details(which is meant more to be printed to the logger
      * than analysed in the code, as the error is unrecoverable anyway)
      */
-    // eslint-disable-next-line no-unused-vars
-    acceptOffer(jingle, success, failure) {
+    acceptOffer(jingle, success, failure) {}
 
-    }
+    /* eslint-enable no-unused-vars, no-empty-function */
 }

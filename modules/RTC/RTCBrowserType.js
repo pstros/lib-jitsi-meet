@@ -1,28 +1,41 @@
-var logger = require("jitsi-meet-logger").getLogger(__filename);
+import { getLogger } from 'jitsi-meet-logger';
 
-var currentBrowser;
+let browserVersion; // eslint-disable-line prefer-const
 
-var browserVersion;
+let currentBrowser;
 
-var isAndroid;
+const logger = getLogger(__filename);
 
-var RTCBrowserType = {
+const RTCBrowserType = {
 
-    RTC_BROWSER_CHROME: "rtc_browser.chrome",
+    RTC_BROWSER_CHROME: 'rtc_browser.chrome',
 
-    RTC_BROWSER_OPERA: "rtc_browser.opera",
+    RTC_BROWSER_OPERA: 'rtc_browser.opera',
 
-    RTC_BROWSER_FIREFOX: "rtc_browser.firefox",
+    RTC_BROWSER_FIREFOX: 'rtc_browser.firefox',
 
-    RTC_BROWSER_IEXPLORER: "rtc_browser.iexplorer",
+    RTC_BROWSER_IEXPLORER: 'rtc_browser.iexplorer',
 
-    RTC_BROWSER_SAFARI: "rtc_browser.safari",
+    RTC_BROWSER_EDGE: 'rtc_browser.edge',
 
-    RTC_BROWSER_NWJS: "rtc_browser.nwjs",
+    RTC_BROWSER_SAFARI: 'rtc_browser.safari',
 
-    RTC_BROWSER_ELECTRON: "rtc_browser.electron",
+    RTC_BROWSER_NWJS: 'rtc_browser.nwjs',
 
-    RTC_BROWSER_REACT_NATIVE: "rtc_browser.react-native",
+    RTC_BROWSER_ELECTRON: 'rtc_browser.electron',
+
+    RTC_BROWSER_REACT_NATIVE: 'rtc_browser.react-native',
+
+    /**
+     * Tells whether or not the <tt>MediaStream/tt> is removed from
+     * the <tt>PeerConnection</tt> and disposed on video mute (in order to turn
+     * off the camera device).
+     * @return {boolean} <tt>true</tt> if the current browser supports this
+     * strategy or <tt>false</tt> otherwise.
+     */
+    doesVideoMuteByStreamRemove() {
+        return !RTCBrowserType.isFirefox();
+    },
 
     /**
      * Gets current browser type.
@@ -37,13 +50,13 @@ var RTCBrowserType = {
      * @returns {string}
      */
     getBrowserName() {
-        var browser;
-        if (RTCBrowserType.isAndroid()) {
-            browser = 'android';
-        } else {
-            browser = currentBrowser.split('rtc_browser.')[1];
+        const isAndroid = navigator.userAgent.indexOf('Android') !== -1;
+
+        if (isAndroid) {
+            return 'android';
         }
-        return browser;
+
+        return currentBrowser.split('rtc_browser.')[1];
     },
 
     /**
@@ -79,6 +92,14 @@ var RTCBrowserType = {
     },
 
     /**
+     * Checks if current browser is Microsoft Edge.
+     * @returns {boolean}
+     */
+    isEdge() {
+        return currentBrowser === RTCBrowserType.RTC_BROWSER_EDGE;
+    },
+
+    /**
      * Checks if current browser is Safari.
      * @returns {boolean}
      */
@@ -103,6 +124,15 @@ var RTCBrowserType = {
     },
 
     /**
+     * Check whether or not the current browser support peer to peer connections
+     * @return {boolean} <tt>true</tt> if p2p is supported or <tt>false</tt>
+     * otherwise.
+     */
+    isP2PSupported() {
+        return !RTCBrowserType.isReactNative();
+    },
+
+    /**
      * Checks if current environment is React Native.
      * @returns {boolean}
      */
@@ -116,13 +146,13 @@ var RTCBrowserType = {
      */
     isTemasysPluginUsed() {
         // Temasys do not support Microsoft Edge:
-        // http://support.temasys.com.sg/support/solutions/articles/5000654345-can-the-temasys-webrtc-plugin-be-used-with-microsoft-edge-
-        if (RTCBrowserType.isIExplorer()
-                && RTCBrowserType.getIExplorerVersion() < 12) {
-            return true;
-        }
-
-        return RTCBrowserType.isSafari();
+        // http://support.temasys.com.sg/support/solutions/articles/
+        // 5000654345-can-the-temasys-webrtc-plugin-be-used-with-microsoft-edge-
+        return (
+            RTCBrowserType.isSafari()
+            || (RTCBrowserType.isIExplorer()
+                && RTCBrowserType.getIExplorerVersion() < 12)
+        );
     },
 
     /**
@@ -160,24 +190,21 @@ var RTCBrowserType = {
         return RTCBrowserType.isIExplorer() ? browserVersion : null;
     },
 
+    /**
+     * Returns Edge version.
+     *
+     * @returns {number|null}
+     */
+    getEdgeVersion() {
+        return RTCBrowserType.isEdge() ? browserVersion : null;
+    },
+
     usesPlanB() {
-        return (
-            RTCBrowserType.isChrome()
-                || RTCBrowserType.isOpera()
-                || RTCBrowserType.isReactNative()
-                || RTCBrowserType.isTemasysPluginUsed());
+        return !RTCBrowserType.usesUnifiedPlan();
     },
 
     usesUnifiedPlan() {
         return RTCBrowserType.isFirefox();
-    },
-
-    /**
-     * Whether the browser is running on an android device.
-     * @returns {boolean}
-     */
-    isAndroid() {
-        return isAndroid;
     },
 
     /**
@@ -188,86 +215,136 @@ var RTCBrowserType = {
         // This mirrors what sdp-simulcast uses (which is used when deciding
         // whether to actually enable simulcast or not).
         // TODO: the logic should be in one single place.
-        return !!window.chrome;
+        return window.chrome !== undefined;
+    },
+
+    supportsRtx() {
+        return !RTCBrowserType.isFirefox();
     }
 
     // Add version getters for other browsers when needed
 };
 
-// detectOpera() must be called before detectChrome() !!!
-// otherwise Opera wil be detected as Chrome
+/**
+ * detectOpera() must be called before detectChrome() !!!
+ * otherwise Opera wil be detected as Chrome
+ */
 function detectChrome() {
     if (navigator.webkitGetUserMedia) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_CHROME;
-        var userAgent = navigator.userAgent.toLowerCase();
+        const userAgent = navigator.userAgent.toLowerCase();
+
         // We can assume that user agent is chrome, because it's
         // enforced when 'ext' streaming method is set
-        var ver = parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
-        logger.log("This appears to be Chrome, ver: " + ver);
+        const ver = parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
+
+        logger.log(`This appears to be Chrome, ver: ${ver}`);
+
         return ver;
     }
+
     return null;
 }
 
+/**
+ *
+ */
 function detectOpera() {
-    var userAgent = navigator.userAgent;
+    const userAgent = navigator.userAgent;
+
     if (userAgent.match(/Opera|OPR/)) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_OPERA;
-        var version = userAgent.match(/(Opera|OPR) ?\/?(\d+)\.?/)[2];
-        logger.info("This appears to be Opera, ver: " + version);
+        const version = userAgent.match(/(Opera|OPR) ?\/?(\d+)\.?/)[2];
+
+        logger.info(`This appears to be Opera, ver: ${version}`);
+
         return version;
     }
+
     return null;
 }
 
+/**
+ *
+ */
 function detectFirefox() {
     if (navigator.mozGetUserMedia) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_FIREFOX;
-        var version = parseInt(
+        const version = parseInt(
             navigator.userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
-        logger.log('This appears to be Firefox, ver: ' + version);
+
+        logger.log(`This appears to be Firefox, ver: ${version}`);
+
         return version;
     }
+
     return null;
 }
 
+/**
+ *
+ */
 function detectSafari() {
-    if ((/^((?!chrome).)*safari/i.test(navigator.userAgent))) {
+    if (/^((?!chrome).)*safari/i.test(navigator.userAgent)) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_SAFARI;
-        logger.info("This appears to be Safari");
+        logger.info('This appears to be Safari');
+
         // FIXME detect Safari version when needed
         return 1;
     }
+
     return null;
 }
 
+/**
+ * Detects IE.
+ */
 function detectIE() {
-    var version;
-    var ua = window.navigator.userAgent;
+    let version;
+    const ua = window.navigator.userAgent;
 
-    var msie = ua.indexOf('MSIE ');
+    const msie = ua.indexOf('MSIE ');
+
     if (msie > 0) {
         // IE 10 or older => return version number
         version = parseInt(ua.substring(msie + 5, ua.indexOf('.', msie)), 10);
     }
 
-    var trident = ua.indexOf('Trident/');
+    const trident = ua.indexOf('Trident/');
+
     if (!version && trident > 0) {
         // IE 11 => return version number
-        var rv = ua.indexOf('rv:');
-        version = parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
-    }
+        const rv = ua.indexOf('rv:');
 
-    var edge = ua.indexOf('Edge/');
-    if (!version && edge > 0) {
-        // IE 12 => return version number
-        version = parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
+        version = parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
     }
 
     if (version) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_IEXPLORER;
-        logger.info("This appears to be IExplorer, ver: " + version);
+        logger.info(`This appears to be IExplorer, ver: ${version}`);
     }
+
+    return version;
+}
+
+/**
+ * Detects Edge.
+ */
+function detectEdge() {
+    let version;
+    const ua = window.navigator.userAgent;
+
+    const edge = ua.indexOf('Edge/');
+
+    if (!version && edge > 0) {
+        version = parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
+    }
+
+    if (version) {
+        currentBrowser = RTCBrowserType.RTC_BROWSER_EDGE;
+        logger.info(`This appears to be Edge, ver: ${version}`);
+    }
+
     return version;
 }
 
@@ -275,75 +352,100 @@ function detectIE() {
  * Detects Electron environment.
  */
 function detectElectron() {
-    var userAgent = navigator.userAgent;
+    const userAgent = navigator.userAgent;
+
     if (userAgent.match(/Electron/)) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_ELECTRON;
-        var version = userAgent.match(/Electron\/([\d.]+)/)[1];
-        logger.info("This appears to be Electron, ver: " + version);
+        const version = userAgent.match(/Electron\/([\d.]+)/)[1];
+
+        logger.info(`This appears to be Electron, ver: ${version}`);
+
         return version;
     }
+
     return null;
 }
 
+/**
+ *
+ */
 function detectNWJS() {
-    var userAgent = navigator.userAgent;
+    const userAgent = navigator.userAgent;
+
     if (userAgent.match(/JitsiMeetNW/)) {
         currentBrowser = RTCBrowserType.RTC_BROWSER_NWJS;
-        var version = userAgent.match(/JitsiMeetNW\/([\d.]+)/)[1];
-        logger.info("This appears to be JitsiMeetNW, ver: " + version);
+        const version = userAgent.match(/JitsiMeetNW\/([\d.]+)/)[1];
+
+        logger.info(`This appears to be JitsiMeetNW, ver: ${version}`);
+
         return version;
     }
+
     return null;
 }
 
+/**
+ *
+ */
 function detectReactNative() {
-    var match
+    const match
         = navigator.userAgent.match(/\b(react[ \t_-]*native)(?:\/(\S+))?/i);
-    var version;
+    let version;
+
     // If we're remote debugging a React Native app, it may be treated as
     // Chrome. Check navigator.product as well and always return some version
     // even if we can't get the real one.
+
     if (match || navigator.product === 'ReactNative') {
         currentBrowser = RTCBrowserType.RTC_BROWSER_REACT_NATIVE;
-        var name;
+        let name;
+
         if (match && match.length > 2) {
             name = match[1];
             version = match[2];
         }
         name || (name = 'react-native');
         version || (version = 'unknown');
-        console.info('This appears to be ' + name + ', ver: ' + version);
+        console.info(`This appears to be ${name}, ver: ${version}`);
     } else {
         // We're not running in a React Native environment.
         version = null;
     }
+
     return version;
 }
 
+/**
+ *
+ */
 function detectBrowser() {
-    var version;
-    var detectors = [
+    let version;
+    const detectors = [
         detectReactNative,
         detectElectron,
         detectNWJS,
         detectOpera,
         detectChrome,
         detectFirefox,
+        detectEdge,
         detectIE,
         detectSafari
     ];
+
     // Try all browser detectors
-    for (var i = 0; i < detectors.length; i++) {
+
+    for (let i = 0; i < detectors.length; i++) {
         version = detectors[i]();
-        if (version)
+        if (version) {
             return version;
+        }
     }
-    logger.warn("Browser type defaults to Safari ver 1");
+    logger.warn('Browser type defaults to Safari ver 1');
     currentBrowser = RTCBrowserType.RTC_BROWSER_SAFARI;
+
     return 1;
 }
 
 browserVersion = detectBrowser();
-isAndroid = navigator.userAgent.indexOf('Android') != -1;
 
-module.exports = RTCBrowserType;
+export default RTCBrowserType;
