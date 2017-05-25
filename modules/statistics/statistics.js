@@ -575,7 +575,7 @@ Statistics.sendLog = function(m) {
     // here we should go over instances and call this method for each
     // unique conference ID rather than selecting the first one.
     // We don't have such use case though, so leaving as is for now.
-    for (const stats of Statistics.instances) {
+    for (const stats of Array.from(Statistics.instances)) {
         if (stats.callsStatsInstances.size) {
             globalSubSet.add(stats.callsStatsInstances.values().next().value);
         }
