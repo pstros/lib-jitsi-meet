@@ -301,7 +301,7 @@ Statistics.prototype.startCallStats = function(tpc, remoteUserID) {
 Statistics._getAllCallStatsInstances = function() {
     const csInstances = new Set();
 
-    for (const statistics of Statistics.instances) {
+    for (const statistics of Array.from(Statistics.instances)) {
         for (const cs of statistics.callsStatsInstances.values()) {
             csInstances.add(cs);
         }
@@ -582,7 +582,7 @@ Statistics.sendLog = function(m) {
     }
 
     if (globalSubSet.size) {
-        for (const csPerStats of globalSubSet) {
+        for (const csPerStats of Array.from(globalSubSet)) {
             CallStats.sendApplicationLog(m, csPerStats);
         }
     } else {

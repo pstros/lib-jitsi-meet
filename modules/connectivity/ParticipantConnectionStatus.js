@@ -496,7 +496,7 @@ export default class ParticipantConnectionStatusHandler {
     refreshConnectionStatusForAll() {
         const participants = this.conference.getParticipants();
 
-        for (const participant of participants) {
+        for (const participant of Array.from(participants)) {
             this.figureOutConnectionStatus(participant.getId());
         }
     }
@@ -561,7 +561,7 @@ export default class ParticipantConnectionStatusHandler {
                  } video track frozen: ${isVideoTrackFrozen
                  } p2p mode: ${inP2PMode
                  } is in last N: ${isInLastN
-                 } currentStatus => newStatus: 
+                 } currentStatus => newStatus:
                     ${participant.getConnectionStatus()} => ${newState}`);
 
         this._changeConnectionStatus(participant, newState);
